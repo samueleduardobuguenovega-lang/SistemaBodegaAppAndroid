@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvUsername;
     private TextView tvUserRole;
     private MaterialButton btnAdminUsersRoles;
+    private MaterialButton btnAdminCategorias;
     private MaterialButton btnLogout;
 
     @Override
@@ -53,12 +54,18 @@ public class MainActivity extends AppCompatActivity {
         tvUsername = findViewById(R.id.tvUsername);
         tvUserRole = findViewById(R.id.tvUserRole);
         btnAdminUsersRoles = findViewById(R.id.btnAdminUsersRoles);
+        btnAdminCategorias = findViewById(R.id.btnAdminCategorias);
         btnLogout = findViewById(R.id.btnLogout);
 
         cargarDatosSesion();
 
         btnAdminUsersRoles.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, UserRoleAdminActivity.class);
+            startActivity(intent);
+        });
+
+        btnAdminCategorias.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, CategoriasActivity.class);
             startActivity(intent);
         });
 

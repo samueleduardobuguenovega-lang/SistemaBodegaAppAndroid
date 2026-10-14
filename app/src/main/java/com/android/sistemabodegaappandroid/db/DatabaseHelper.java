@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.android.sistemabodegaappandroid.model.Categoria;
 import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.util.PasswordUtils;
@@ -16,7 +17,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "sistema_bodega.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2; // de 1 a 2
 
     // Tabla ROL
     public static final String TABLE_ROL = "ROL";
@@ -32,6 +33,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_USUARIO_PASSWORD_HASH = "password_hash";
     public static final String COLUMN_USUARIO_ID_ROL = "id_rol";
     public static final String COLUMN_USUARIO_ACTIVO = "activo";
+
+    // Tabla CATEGORIA (CU-09)
+    public static final String TABLE_CATEGORIA = "CATEGORIA";
+    public static final String COLUMN_CAT_ID = "id_categoria";
+    public static final String COLUMN_CAT_NOMBRE = "nombre_categoria";
+    public static final String COLUMN_CAT_DESCRIPCION = "descripcion";
+    public static final String COLUMN_CAT_ACTIVO = "activo";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -62,12 +70,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + ");";
         db.execSQL(CREATE_USUARIO_TABLE);
 
+        // Crear tabla CATEGORIA (CU-09)
+        String CREATE_CATEGORIA_TABLE = "CREATE TABLE " + TABLE_CATEGORIA + " ("
+                + COLUMN_CAT_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COLUMN_CAT_NOMBRE + " TEXT UNIQUE NOT NULL, "
+                + COLUMN_CAT_DESCRIPCION + " TEXT, "
+                + COLUMN_CAT_ACTIVO + " INTEGER NOT NULL DEFAULT 1"
+                + ");";
+        db.execSQL(CREATE_CATEGORIA_TABLE);
+
         // Insertar roles iniciales de prueba
         insertInitialSeedData(db);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_CATEGORIA);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USUARIO);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_ROL);
         onCreate(db);
@@ -241,5 +259,45 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         boolean exists = cursor.getCount() > 0;
         cursor.close();
         return exists;
+    }
+
+    // --- MÓDULO DE CATEGORÍAS (CU-09 - Agregado para registro y validación de unicidad) ---
+
+    public boolean isCategoriaExists(String nombreCategoria) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT 1 FROM " + TABLE_CATEGORIA + " WHERE " + COLUMN_CAT_NOMBRE + " = ? COLLATE NOCASE", new String[]{nombreCategoria.trim()});
+        boolean exists = cursor.getCount() > 0;
+        cursor.close();
+        return exists;
+    }
+
+    public long insertCategoria(String nombreCategoria, String descripcion) {
+        if (isCategoriaExists(nombreCategoria)) {
+            return -1; // Retorna -1 si el nombre de categoría ya existe (Cumple CU-09 Flujo Alternativo)
+        }
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COLUMN_CAT_NOMBRE, nombreCategoria.trim());
+        cv.put(COLUMN_CAT_DESCRIPCION, descripcion != null ? descripcion.trim() : "");
+        cv.put(COLUMN_CAT_ACTIVO, 1);
+        return db.insert(TABLE_CATEGORIA, null, cv);
+    }
+
+    public List<Categoria> getAllCategorias() {
+        List<Categoria> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_CATEGORIA + " ORDER BY " + COLUMN_CAT_NOMBRE + " ASC", null);
+        if (cursor.moveToFirst()) {
+            do {
+                Categoria cat = new Categoria();
+                cat.setIdCategoria(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CAT_ID)));
+                cat.setNombreCategoria(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CAT_NOMBRE)));
+                cat.setDescripcion(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CAT_DESCRIPCION)));
+                cat.setActivo(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CAT_ACTIVO)));
+                list.add(cat);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        return list;
     }
 }
