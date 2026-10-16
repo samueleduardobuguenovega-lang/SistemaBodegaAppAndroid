@@ -3,14 +3,17 @@ package com.android.sistemabodegaappandroid.db;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.android.sistemabodegaappandroid.model.Categoria;
 import com.android.sistemabodegaappandroid.model.Producto;
+import com.android.sistemabodegaappandroid.model.Proveedor;
 import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.util.PasswordUtils;
@@ -24,6 +27,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "sistema_bodega.db";
     private static final int DATABASE_VERSION = 4; // 4: MOVIMIENTO registra el proveedor de la entrada
+
+    /** Etiqueta de los registros de log del helper (fallos de migración, etc.). */
+    private static final String TAG = "DatabaseHelper";
 
     /**
      * Hilo dedicado para las consultas reactivas de CU-10. Evita ejecutar el DAO
@@ -201,6 +207,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * que le corresponden, en orden. Antes aquí se hacía DROP TABLE de todo,
      * lo que destruía usuarios y categorías al actualizar la app; esa es la
      * falla que esta versión corrige: los datos existentes deben sobrevivir.
+     *
+     * Cada paso es idempotente: el DDL de tablas usa IF NOT EXISTS y cada
+     * ALTER TABLE consulta antes a PRAGMA table_info, así que un reintento
+     * (por un fallo previo o por una base ya alterada) no vuelve a ejecutar
+     * un paso aplicado ni revienta. Si algo falla igual, el error queda
+     * registrado con el paso exacto y se propaga: SQLiteOpenHelper revierte
+     * la transacción y la base conserva su versión anterior, en vez de quedar
+     * marcada como migrada con la columna ausente.
      */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
@@ -215,15 +229,47 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 4) {
             // v4 agrega el proveedor de la entrada al historial de movimientos.
             // ALTER TABLE incremental: no se recrea la tabla porque eso
-            // destruiría los movimientos ya registrados. El try/catch cubre el
-            // caso de una base que ya tuviera la columna por una migración
-            // previa interrumpida.
-            try {
-                db.execSQL("ALTER TABLE " + TABLE_MOVIMIENTO
-                        + " ADD COLUMN " + COLUMN_MOV_ID_PROVEEDOR + " INTEGER");
-            } catch (android.database.SQLException columnaYaExistente) {
-                // La columna ya estaba: nada que migrar, se conservan los datos.
+            // destruiría los movimientos ya registrados.
+            agregarColumnaSiFalta(db, TABLE_MOVIMIENTO, COLUMN_MOV_ID_PROVEEDOR,
+                    "ALTER TABLE " + TABLE_MOVIMIENTO
+                            + " ADD COLUMN " + COLUMN_MOV_ID_PROVEEDOR + " INTEGER",
+                    "v4: MOVIMIENTO." + COLUMN_MOV_ID_PROVEEDOR);
+        }
+    }
+
+    /** true si PRAGMA table_info muestra la columna en la tabla indicada. */
+    private boolean columnaExisteEnTabla(SQLiteDatabase db, String tabla, String columna) {
+        try (Cursor cursor = db.rawQuery("PRAGMA table_info(" + tabla + ")", null)) {
+            int indiceNombre = cursor.getColumnIndexOrThrow("name");
+            while (cursor.moveToNext()) {
+                if (columna.equalsIgnoreCase(cursor.getString(indiceNombre))) {
+                    return true;
+                }
             }
+        }
+        return false;
+    }
+
+    /**
+     * Aplica un ALTER TABLE solo si la columna todavía no existe, para que un
+     * paso repetido no falle y un reintento pueda retomar la migración donde
+     * quedó. Un fallo inesperado se registra con el nombre del paso y se
+     * propaga: no se deja la base a medias en silencio.
+     *
+     * @param paso identificador del paso de migración, usado en el log de error.
+     */
+    private void agregarColumnaSiFalta(SQLiteDatabase db, String tabla, String columna,
+                                       String alterTable, String paso) {
+        if (columnaExisteEnTabla(db, tabla, columna)) {
+            // Migración previamente aplicada o base ya alterada: nada que hacer.
+            return;
+        }
+        try {
+            db.execSQL(alterTable);
+        } catch (SQLException e) {
+            Log.e(TAG, "Fallo el paso de migracion " + paso
+                    + " sobre " + tabla + ": " + alterTable, e);
+            throw e;
         }
     }
 
@@ -262,15 +308,37 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * Busca a un usuario por username.
      */
     public Usuario getUsuarioByUsername(String username) {
+        return buscarUsuarioPor(COLUMN_USUARIO_USERNAME, username);
+    }
+
+    /**
+     * Busca a un usuario por su id.
+     *
+     * Existe para que el guard de la administración reconsulte el rol REAL en
+     * la base en vez de confiar en la preferencia de sesión: la preferencia es
+     * copia, no autoridad.
+     *
+     * @param idUsuario id del usuario a buscar.
+     * @return el usuario con su rol, o null si no existe.
+     */
+    public Usuario getUsuarioById(int idUsuario) {
+        return buscarUsuarioPor(COLUMN_USUARIO_ID, String.valueOf(idUsuario));
+    }
+
+    /**
+     * Consulta parametrizada compartida: la columna es siempre una constante
+     * interna y el valor viaja como argumento de `?`, sin concatenar SQL.
+     */
+    private Usuario buscarUsuarioPor(String columna, String valor) {
         SQLiteDatabase db = this.getReadableDatabase();
         String query = "SELECT u." + COLUMN_USUARIO_ID + ", u." + COLUMN_USUARIO_USERNAME + ", u."
                 + COLUMN_USUARIO_NOMBRE_COMPLETO + ", u." + COLUMN_USUARIO_PASSWORD_HASH + ", u."
                 + COLUMN_USUARIO_ID_ROL + ", u." + COLUMN_USUARIO_ACTIVO + ", r." + COLUMN_ROL_NOMBRE
                 + " FROM " + TABLE_USUARIO + " u INNER JOIN " + TABLE_ROL + " r ON u."
                 + COLUMN_USUARIO_ID_ROL + " = r." + COLUMN_ROL_ID
-                + " WHERE u." + COLUMN_USUARIO_USERNAME + " = ?";
+                + " WHERE u." + columna + " = ?";
 
-        Cursor cursor = db.rawQuery(query, new String[]{username});
+        Cursor cursor = db.rawQuery(query, new String[]{valor});
         Usuario usuario = null;
         if (cursor.moveToFirst()) {
             usuario = new Usuario();
@@ -287,8 +355,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Autentica al usuario verificando username, contraseña e id_rol/activo.
-     * Retorna el objeto Usuario si es válido y activo, o null.
+     * Autentica al usuario verificando username y contraseña.
+     * Retorna el objeto Usuario si la contraseña coincide, o null.
+     *
+     * Si el hash guardado aún está en el formato heredado (SHA-256 sin sal) y
+     * la contraseña es correcta, la fila se reescribe con PBKDF2: migración
+     * transparente durante el login, sin duplicar la verificación en ningún
+     * otro lado.
      */
     public Usuario autenticar(String username, String rawPassword) {
         Usuario usuario = getUsuarioByUsername(username);
@@ -296,12 +369,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return null; // Usuario no existe
         }
 
-        String inputHash = PasswordUtils.hashPassword(rawPassword);
-        if (usuario.getPasswordHash().equals(inputHash)) {
-            return usuario;
+        String hashAlmacenado = usuario.getPasswordHash();
+        if (!PasswordUtils.verificar(rawPassword, hashAlmacenado)) {
+            return null; // Contraseña incorrecta
         }
 
-        return null; // Contraseña incorrecta
+        if (PasswordUtils.necesitaRehash(hashAlmacenado)) {
+            String hashNuevo = PasswordUtils.hashPassword(rawPassword);
+            ContentValues cv = new ContentValues();
+            cv.put(COLUMN_USUARIO_PASSWORD_HASH, hashNuevo);
+            this.getWritableDatabase().update(
+                    TABLE_USUARIO, cv,
+                    COLUMN_USUARIO_ID + " = ?",
+                    new String[]{String.valueOf(usuario.getIdUsuario())});
+            usuario.setPasswordHash(hashNuevo);
+        }
+
+        return usuario;
     }
 
     // --- ADMINISTRACIÓN DE ROLES (RF-27) ---
@@ -560,5 +644,45 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         final String texto = filtro;
         productoExecutor.execute(() ->
                 destino.postValue(productoDaoReactivo.buscarProductos(texto)));
+    }
+
+    // ---------------------------------------------------------------------
+    // PROVEEDORES (CU-11)
+    // ---------------------------------------------------------------------
+
+    /** Hilo dedicado a las consultas reactivas de proveedores. */
+    private static final ExecutorService proveedorExecutor = Executors.newSingleThreadExecutor();
+
+    /** Cache LiveData del listado; se llena solo en la primera suscripción. */
+    private MutableLiveData<List<Proveedor>> proveedores;
+
+    /** DAO de proveedores reutilizado por el camino reactivo; las consultas siguen en él. */
+    private final ProveedorDao proveedorDaoReactivo = new ProveedorDao(this);
+
+    /**
+     * CU-11: expone el listado de proveedores habilitados como LiveData, con el
+     * mismo esquema que categorías, usuarios y productos. La primera
+     * suscripción dispara la consulta en el hilo de E/S.
+     */
+    public LiveData<List<Proveedor>> observarProveedores() {
+        if (proveedores == null) {
+            proveedores = new MutableLiveData<>();
+            refrescarProveedores();
+        }
+        return proveedores;
+    }
+
+    /**
+     * Vuelve a consultar PROVEEDOR y publica el resultado. Seguro de llamar
+     * desde el hilo principal (alta, edición o baja lógica): el trabajo ocurre
+     * en el executor y la lista se actualiza sola en la interfaz.
+     */
+    public void refrescarProveedores() {
+        final MutableLiveData<List<Proveedor>> destino = proveedores;
+        if (destino == null) {
+            return;
+        }
+        proveedorExecutor.execute(() ->
+                destino.postValue(proveedorDaoReactivo.getAllProveedores()));
     }
 }

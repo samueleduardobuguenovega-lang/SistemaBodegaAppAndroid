@@ -2,6 +2,7 @@ package com.android.sistemabodegaappandroid.ui.admin;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -11,6 +12,8 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.android.sistemabodegaappandroid.R;
 import com.android.sistemabodegaappandroid.MainActivity;
+import com.android.sistemabodegaappandroid.db.DatabaseHelper;
+import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.session.SessionManager;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -23,10 +26,13 @@ public class UserRoleAdminActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Guarda real: ocultar el boton no basta, la pantalla puede abrirse directo.
-        // El rol sale de la sesion, que a su vez viene del registro en la base.
+        // Guarda real: ocultar el boton no basta, la pantalla puede abrirse
+        // directo. La preferencia de sesión es una copia y basta con
+        // restaurarla o manipularla para que diga "Administrador", asi que el
+        // rol se reconsulta en la base antes de mostrar u operar la pantalla.
         SessionManager session = new SessionManager(this);
-        if (!session.isLoggedIn() || !session.esAdministrador()) {
+        if (!session.isLoggedIn() || !rolRealEsAdministrador(session.getUserId())) {
+            Toast.makeText(this, R.string.msg_acceso_admin_denegado, Toast.LENGTH_LONG).show();
             startActivity(new Intent(this, MainActivity.class));
             finish();
             return;
@@ -71,5 +77,27 @@ public class UserRoleAdminActivity extends AppCompatActivity {
                 tab.setText(R.string.tab_roles);
             }
         }).attach();
+    }
+
+    /**
+     * Consulta el rol REAL en la base para el usuario de la sesión.
+     *
+     * La preferencia solo guarda una copia del rol del login: si fue
+     * restaurada, manipulada o el usuario fue degradado/inactivo después,
+     * sigue diciendo "Administrador". La autoridad es la fila de USUARIO.
+     *
+     * @param idUsuario id del usuario en sesión.
+     * @return true solo si el usuario existe, está activo y su rol es
+     *         Administrador según la base.
+     */
+    private boolean rolRealEsAdministrador(int idUsuario) {
+        if (idUsuario < 0) {
+            return false;
+        }
+        Usuario usuario = new DatabaseHelper(this).getUsuarioById(idUsuario);
+        return usuario != null
+                && usuario.isActivo()
+                && usuario.getNombreRol() != null
+                && "Administrador".equalsIgnoreCase(usuario.getNombreRol().trim());
     }
 }

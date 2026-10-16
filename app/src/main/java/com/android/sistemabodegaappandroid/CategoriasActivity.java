@@ -21,9 +21,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.util.Collections;
-import java.util.List;
-
 public class CategoriasActivity extends AppCompatActivity {
 
     private DatabaseHelper dbHelper;
@@ -67,8 +64,9 @@ public class CategoriasActivity extends AppCompatActivity {
 
                 if (categoria != null) {
                     tvNombre.setText(categoria.getNombreCategoria());
-                    // CU-10: solo llegan categorías activas; el check lo confirma en pantalla.
-                    ivActiva.setVisibility(categoria.getActivo() == 1 ? View.VISIBLE : View.GONE);
+                    // CU-10: la lista solo recibe categorías activas, así que el
+                    // check se muestra siempre y no hay rama de "inactiva".
+                    ivActiva.setVisibility(View.VISIBLE);
                     tvDesc.setText(categoria.getDescripcion());
                     tvDesc.setVisibility(TextUtils.isEmpty(categoria.getDescripcion())
                             ? View.GONE : View.VISIBLE);

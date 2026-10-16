@@ -19,8 +19,13 @@ public class AuthenticationUnitTest {
 
         assertNotNull(hash1);
         assertFalse(hash1.isEmpty());
-        assertEquals(hash1, hash2);
+        // La sal aleatoria hace que dos hashes de la misma contraseña difieran.
+        assertNotEquals(hash1, hash2);
         assertNotEquals(hash1, hashDifferent);
+        assertTrue(hash1.startsWith("pbkdf2$"));
+        // Ambos siguen validando la misma contraseña.
+        assertTrue(PasswordUtils.verificar(rawPassword, hash1));
+        assertTrue(PasswordUtils.verificar(rawPassword, hash2));
     }
 
     @Test

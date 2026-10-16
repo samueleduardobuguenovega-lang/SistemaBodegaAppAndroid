@@ -128,17 +128,37 @@ public class ProductoFormActivity extends AppCompatActivity {
         btnMovimiento.setOnClickListener(v -> mostrarDialogoMovimiento());
     }
 
-    /** Carga las categorías activas en el selector; sin ninguna, no se puede guardar. */
+    /**
+     * Carga las categorías activas en el selector; sin ninguna, no se puede guardar.
+     *
+     * La lista llega por LiveData (CU-10): la consulta corre en el executor de
+     * DatabaseHelper y el observer rellena el spinner en el hilo principal.
+     */
     private void cargarCategorias() {
-        categorias = dbHelper.getCategoriasActivas();
-        List<String> nombres = new ArrayList<>();
-        for (Categoria categoria : categorias) {
-            nombres.add(categoria.getNombreCategoria());
-        }
-        ArrayAdapter<String> adaptador = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, nombres);
-        adaptador.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerCategoria.setAdapter(adaptador);
+        dbHelper.observarCategoriasActivas().observe(this, lista -> {
+            if (lista == null) {
+                return;
+            }
+            // Al recrear el adapter el spinner vuelve a la posición 0, así que
+            // se recuerda la elegida para no perderla en un refresco.
+            int seleccionPrevia = spinnerCategoria.getSelectedItemPosition();
+            categorias = lista;
+            List<String> nombres = new ArrayList<>();
+            for (Categoria categoria : categorias) {
+                nombres.add(categoria.getNombreCategoria());
+            }
+            ArrayAdapter<String> adaptador = new ArrayAdapter<>(
+                    this, android.R.layout.simple_spinner_item, nombres);
+            adaptador.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerCategoria.setAdapter(adaptador);
+            // En edición la categoría del producto se restaura aquí mismo: el
+            // LiveData entrega la lista después de cargarProductoExistente().
+            if (producto != null) {
+                spinnerCategoria.setSelection(indiceCategoria(producto.getIdCategoria()));
+            } else if (seleccionPrevia >= 0 && seleccionPrevia < categorias.size()) {
+                spinnerCategoria.setSelection(seleccionPrevia);
+            }
+        });
     }
 
     /** El proveedor es opcional: la primera opción siempre es "Sin proveedor". */
