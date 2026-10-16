@@ -135,6 +135,8 @@
     <string name="msg_proveedor_guardado">Proveedor guardado correctamente</string>
     <string name="msg_rut_duplicado">El RUT ya existe</string>
     <string name="msg_razon_rut_requeridos">La razón social y el RUT no pueden estar vacíos</string>
+    <!-- CU-12: el contrato exige razón social Y número de contacto. -->
+    <string name="msg_telefono_requerido">Falta el número de contacto: el teléfono del proveedor es obligatorio</string>
     <string name="msg_proveedor_deshabilitado">Proveedor deshabilitado</string>
     <string name="msg_proveedor_error">No se pudo guardar el proveedor</string>
 

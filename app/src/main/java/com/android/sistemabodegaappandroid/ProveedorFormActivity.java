@@ -88,9 +88,18 @@ public class ProveedorFormActivity extends AppCompatActivity {
     private void guardar() {
         String razonSocial = texto(etRazonSocial);
         String rut = texto(etRut);
+        String telefono = texto(etTelefono);
 
         if (TextUtils.isEmpty(razonSocial) || TextUtils.isEmpty(rut)) {
             Toast.makeText(this, R.string.msg_razon_rut_requeridos, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // El contrato exige razón social Y número de contacto. La obligatoriedad
+        // se valida aquí a propósito: reforzar el NOT NULL de PROVEEDOR obligaría
+        // a reconstruir la tabla y a mover las claves foráneas de PRODUCTO y MOVIMIENTO.
+        if (TextUtils.isEmpty(telefono)) {
+            Toast.makeText(this, R.string.msg_telefono_requerido, Toast.LENGTH_SHORT).show();
             return;
         }
 
