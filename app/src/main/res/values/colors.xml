@@ -2,4 +2,17 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Sistema de diseño Bodega Express (tokens medidos desde la referencia) -->
+    <color name="primary">#1565C0</color>
+    <color name="primary_dark">#1457AC</color>
+    <color name="primary_container">#B3DEFF</color>
+    <color name="accent">#E76E1A</color>
+    <color name="background">#F6F8FB</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#1A1C1E</color>
+    <color name="text_secondary">#5F6368</color>
+    <color name="text_placeholder">#9AA0A6</color>
+    <color name="outline">#C4CBD4</color>
+    <color name="ripple_primary">#331565C0</color>
 </resources>

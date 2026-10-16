@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Caja vacía para el estado sin datos del listado de productos. Vector propio
+     porque los nombres de drawable del sistema no son referenciables desde el
+     proyecto y fallarían en el merge de recursos. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/text_placeholder"
+        android:pathData="M2,5h20v4h-20z" />
+    <path
+        android:fillColor="@color/outline"
+        android:pathData="M4,10h16v10H4z" />
+    <path
+        android:fillColor="@color/text_placeholder"
+        android:pathData="M10,13h4v4h-4z" />
+</vector>

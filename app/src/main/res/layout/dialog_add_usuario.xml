@@ -60,7 +60,7 @@
         android:layout_marginTop="12dp"
         android:text="@string/hint_select_role"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:textColor="@color/text_secondary" />
 
     <Spinner
         android:id="@+id/spinnerRoles"

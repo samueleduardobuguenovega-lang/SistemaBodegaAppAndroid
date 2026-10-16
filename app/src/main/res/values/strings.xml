@@ -5,10 +5,23 @@
     <string name="hint_username">Nombre de usuario</string>
     <string name="hint_password">Contraseña</string>
     <string name="btn_login">Iniciar Sesión</string>
-    <string name="default_credentials_notice">Credenciales por defecto:\nUsuario: admin | Contraseña: admin</string>
+    <string name="default_credentials_notice">Usuario inicial: admin · Contraseña: admin (cámbiela al entrar)</string>
     <string name="error_empty_fields">Por favor, ingrese el usuario y la contraseña.</string>
-    <string name="error_inactive_user">El usuario se encuentra inactivo. Contacte al administrador.</string>
-    <string name="error_invalid_credentials">Nombre de usuario o contraseña incorrectos.</string>
+    <string name="error_inactive_user">Usuario deshabilitado. Contacte al administrador</string>
+    <string name="error_credenciales">Credenciales inválidas</string>
+    <string name="error_username_duplicado">El nombre de usuario ya se encuentra registrado</string>
+    <string name="msg_usuario_registrado">Usuario registrado exitosamente</string>
+    <string name="msg_categoria_duplicada">Ya existe una categoría registrada con ese nombre</string>
+    <string name="msg_categoria_nombre_vacio">El nombre no puede estar vacío</string>
+    <string name="msg_categoria_registrada">Categoría registrada correctamente</string>
+    <string name="dialog_title_registrar_categoria">Registrar Categoría</string>
+    <string name="msg_rol_invalido">Seleccione un rol válido</string>
+    <string name="msg_error_registrar_usuario">Error al registrar el usuario</string>
+    <string name="msg_campos_obligatorios">Todos los campos son obligatorios</string>
+    <string name="msg_roles_requeridos">Debe registrar al menos un rol antes de crear usuarios</string>
+    <string name="msg_estado_usuario_actualizado">Estado del usuario actualizado</string>
+    <string name="msg_error_actualizar_estado">Error al actualizar estado</string>
+    <string name="msg_sesion_iniciada">Sesión iniciada correctamente</string>
 
     <string name="title_main">Panel Principal</string>
     <string name="welcome_user">¡Bienvenido!</string>
@@ -30,4 +43,112 @@
     <string name="switch_activo">Usuario Activo</string>
     <string name="save">Guardar</string>
     <string name="cancel">Cancelar</string>
+
+    <!-- CU-10: Consultar y seleccionar categorías -->
+    <string name="title_categorias">Categorías</string>
+    <string name="subtitle_categorias">Solo se muestran las categorías habilitadas</string>
+    <string name="empty_categorias">Todavía no hay categorías activas registradas</string>
+    <string name="add_categoria">Agregar categoría</string>
+    <string name="categoria_activa">Categoría activa</string>
+
+    <!-- Accesos desde el panel principal (inventario) -->
+    <string name="btn_admin_productos">Gestión de Productos</string>
+    <string name="btn_admin_proveedores">Gestión de Proveedores</string>
+
+    <!-- Ids de los accesos al inventario. Se declaran aquí porque los botones
+         se crean en código: el layout del panel principal no forma parte de
+         este módulo y no debe modificarse para sumar dos accesos. -->
+    <item name="btnAdminProductos" type="id" />
+    <item name="btnAdminProveedores" type="id" />
+
+    <!-- CU-11: listado y búsqueda de productos -->
+    <string name="title_productos">Productos</string>
+    <string name="subtitle_productos">Busque por nombre o SKU para localizar un producto</string>
+    <string name="hint_search_productos">Buscar por nombre o SKU</string>
+    <string name="empty_productos">Todavía no hay productos registrados</string>
+    <string name="add_producto">Agregar producto</string>
+    <string name="label_sku">SKU: %1$s</string>
+    <string name="label_categoria">Categoría: %1$s</string>
+    <string name="label_proveedor">Proveedor: %1$s</string>
+    <string name="label_precio_venta">Precio de venta: %1$s</string>
+    <string name="label_stock">Stock: %1$d</string>
+    <string name="label_stock_minimo">Stock mínimo: %1$d</string>
+    <string name="sin_categoria">Sin categoría</string>
+    <string name="sin_proveedor">Sin proveedor</string>
+    <string name="stock_bajo">Stock bajo</string>
+
+    <!-- Formulario de producto -->
+    <string name="title_producto_nuevo">Nuevo Producto</string>
+    <string name="title_producto_editar">Editar Producto</string>
+    <string name="hint_sku">SKU</string>
+    <string name="hint_nombre_producto">Nombre del producto</string>
+    <string name="hint_descripcion_producto">Descripción</string>
+    <string name="hint_precio_costo">Precio de costo</string>
+    <string name="hint_precio_venta">Precio de venta</string>
+    <string name="hint_stock_minimo">Stock mínimo</string>
+    <string name="hint_categoria">Categoría</string>
+    <string name="hint_proveedor">Proveedor</string>
+    <string name="section_movimientos">Movimientos de stock</string>
+    <string name="btn_registrar_movimiento">Registrar movimiento</string>
+    <string name="btn_guardar_producto">Guardar producto</string>
+    <string name="sin_movimientos">Todavía no hay movimientos registrados</string>
+    <string name="linea_movimiento">%1$s · %2$s · %3$d · %4$s</string>
+    <!-- Historial de movimientos: la ENTRADA con proveedor muestra la razón social
+         (el 5° argumento ya viene etiquetado con label_proveedor). -->
+    <string name="linea_movimiento_proveedor">%1$s · %2$s · %3$d · %4$s · %5$s</string>
+
+    <!-- Diálogo de movimiento de stock -->
+    <string name="dialog_movimiento_titulo">Movimiento de stock</string>
+    <string name="hint_tipo_movimiento">Tipo de movimiento</string>
+    <string name="tipo_entrada">Entrada</string>
+    <string name="tipo_salida">Salida</string>
+    <string name="hint_cantidad_movimiento">Cantidad</string>
+    <string name="btn_confirmar_movimiento">Registrar</string>
+
+    <!-- Mensajes de producto -->
+    <string name="msg_producto_guardado">Producto guardado correctamente</string>
+    <string name="msg_sku_duplicado">El SKU ya existe</string>
+    <string name="msg_nombre_sku_requerido">El nombre y el SKU no pueden estar vacíos</string>
+    <string name="msg_valores_invalidos">Los precios y el stock mínimo no pueden ser negativos</string>
+    <string name="msg_categoria_requerida">Registre una categoría antes de crear productos</string>
+    <string name="msg_producto_no_encontrado">El producto ya no está disponible</string>
+    <string name="msg_producto_error">No se pudo guardar el producto</string>
+    <string name="msg_cantidad_invalida">Ingrese una cantidad mayor que cero</string>
+    <string name="msg_movimiento_ok">Movimiento de stock registrado</string>
+    <string name="msg_movimiento_error">No se pudo registrar el movimiento: revise la cantidad</string>
+
+    <!-- CU-12: proveedores -->
+    <string name="title_proveedores">Proveedores</string>
+    <string name="subtitle_proveedores">Proveedores habilitados para compras y recepciones</string>
+    <string name="empty_proveedores">Todavía no hay proveedores registrados</string>
+    <string name="add_proveedor">Agregar proveedor</string>
+    <string name="hint_razon_social">Razón social</string>
+    <string name="hint_rut">RUT</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_telefono">Teléfono</string>
+    <string name="hint_direccion">Dirección</string>
+    <string name="title_proveedor_nuevo">Nuevo Proveedor</string>
+    <string name="title_proveedor_editar">Editar Proveedor</string>
+    <string name="btn_guardar_proveedor">Guardar proveedor</string>
+    <string name="btn_deshabilitar">Deshabilitar</string>
+    <string name="confirmar_deshabilitar">El proveedor dejará de aparecer en los listados. ¿Desea continuar?</string>
+    <string name="msg_proveedor_guardado">Proveedor guardado correctamente</string>
+    <string name="msg_rut_duplicado">El RUT ya existe</string>
+    <string name="msg_razon_rut_requeridos">La razón social y el RUT no pueden estar vacíos</string>
+    <!-- CU-12: el contrato exige razón social Y número de contacto. -->
+    <string name="msg_telefono_requerido">Falta el número de contacto: el teléfono del proveedor es obligatorio</string>
+    <string name="msg_proveedor_deshabilitado">Proveedor deshabilitado</string>
+    <string name="msg_proveedor_error">No se pudo guardar el proveedor</string>
+
+    <!-- RF-08: baja lógica de productos. El id se declara aquí porque el botón
+         se construye en código: el layout del formulario no debe modificarse
+         para sumar la acción. -->
+    <item name="btnDeshabilitarProducto" type="id" />
+    <string name="btn_deshabilitar_producto">Deshabilitar producto</string>
+    <string name="title_deshabilitar_producto">Deshabilitar producto</string>
+    <string name="confirmar_deshabilitar_producto">El producto dejará de aparecer en los listados y no aceptará nuevas operaciones. Su historial de movimientos se conserva. ¿Desea continuar?</string>
+    <string name="msg_producto_deshabilitado">Producto deshabilitado</string>
+
+    <!-- Asociación de proveedor a los movimientos de entrada -->
+    <string name="hint_proveedor_movimiento">Proveedor de la entrada</string>
 </resources>
