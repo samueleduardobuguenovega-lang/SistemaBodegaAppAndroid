@@ -21,6 +21,8 @@ import java.util.Locale;
  * Está separado de {@link DatabaseHelper} a propósito: el helper ya concentra
  * roles, usuarios y categorías, y aislar el módulo de productos evita que
  * dos frentes de trabajo editen el mismo archivo y choquen en la fusión.
+ * Solo el puente reactivo RF-04/RF-05 ({@code observarProductos}) vive en el
+ * helper; las consultas, incluida la búsqueda, siguen aquí.
  * Recibe el helper en el constructor y usa sus propias constantes de tabla.
  */
 public class ProductoDao {

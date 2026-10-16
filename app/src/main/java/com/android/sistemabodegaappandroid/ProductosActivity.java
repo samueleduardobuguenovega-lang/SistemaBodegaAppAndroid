@@ -13,8 +13,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.sistemabodegaappandroid.db.DatabaseHelper;
-import com.android.sistemabodegaappandroid.db.ProductoDao;
-import com.android.sistemabodegaappandroid.model.Producto;
 import com.android.sistemabodegaappandroid.ui.adapter.ProductoAdapter;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -22,17 +20,17 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.Collections;
-import java.util.List;
 
 /**
- * Listado de productos con búsqueda por nombre o SKU (CU-11).
+ * Listado de productos con búsqueda por nombre o SKU (CU-11 / RF-04 y RF-05).
  *
- * La consulta se delega al DAO en cada pulsación para que el filtro aplique
- * sobre la base y no sobre una copia desactualizada en memoria.
+ * El catálogo se expone como LiveData desde {@link DatabaseHelper}: la
+ * consulta corre en el executor del helper, nunca en el hilo principal, y la
+ * pantalla solo pide un refresco cuando cambia el texto del buscador.
  */
 public class ProductosActivity extends AppCompatActivity {
 
-    private ProductoDao productoDao;
+    private DatabaseHelper dbHelper;
     private ProductoAdapter adapter;
     private RecyclerView rvProductos;
     private TextView tvVacioProductos;
@@ -46,7 +44,7 @@ public class ProductosActivity extends AppCompatActivity {
         // El notch y las barras del sistema no deben tapar el contenido.
         EdgeToEdgeInsets.apply(this, findViewById(R.id.rootProductos));
 
-        productoDao = new ProductoDao(new DatabaseHelper(this));
+        dbHelper = new DatabaseHelper(this);
         rvProductos = findViewById(R.id.rvProductos);
         tvVacioProductos = findViewById(R.id.tvVacioProductos);
         ivVacioProductos = findViewById(R.id.ivVacioProductos);
@@ -67,7 +65,21 @@ public class ProductosActivity extends AppCompatActivity {
         rvProductos.setLayoutManager(new LinearLayoutManager(this));
         rvProductos.setAdapter(adapter);
 
-        // Búsqueda en vivo: cada carácter vuelve a consultar el DAO.
+        // RF-04/RF-05: la lista observa el LiveData del helper. Cada actualización
+        // llega ya resuelta al hilo principal, con el filtro de nombre o SKU aplicado.
+        dbHelper.observarProductos(null).observe(this, productos -> {
+            if (productos == null) {
+                return;
+            }
+            adapter.updateData(productos);
+            boolean vacio = productos.isEmpty();
+            tvVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
+            ivVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
+            rvProductos.setVisibility(vacio ? View.GONE : View.VISIBLE);
+        });
+
+        // Búsqueda en vivo: cada carácter solo pide un refresco; la consulta
+        // la ejecuta el executor de DatabaseHelper fuera del hilo principal.
         etBuscar.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -79,7 +91,7 @@ public class ProductosActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                cargarProductos(s != null ? s.toString() : null);
+                dbHelper.refrescarProductos(s != null ? s.toString() : null);
             }
         });
 
@@ -91,17 +103,7 @@ public class ProductosActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // Vuelve a leer al regresar del formulario: ahí se creó o se movió stock.
-        cargarProductos(busquedaActual());
-    }
-
-    /** Consulta al DAO y refleja el resultado en la lista y en el estado vacío. */
-    private void cargarProductos(String texto) {
-        List<Producto> productos = productoDao.buscarProductos(texto);
-        adapter.updateData(productos);
-        boolean vacio = productos.isEmpty();
-        tvVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
-        ivVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
-        rvProductos.setVisibility(vacio ? View.GONE : View.VISIBLE);
+        dbHelper.refrescarProductos(busquedaActual());
     }
 
     /** Texto que tiene el campo de búsqueda en este momento. */

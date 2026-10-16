@@ -10,6 +10,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.android.sistemabodegaappandroid.model.Categoria;
+import com.android.sistemabodegaappandroid.model.Producto;
 import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.util.PasswordUtils;
@@ -513,5 +514,51 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return;
         }
         usuarioExecutor.execute(() -> destino.postValue(getAllUsuarios()));
+    }
+
+    // ---------------------------------------------------------------------
+    // PRODUCTOS (RF-04 / RF-05)
+    // ---------------------------------------------------------------------
+
+    /** Hilo dedicado a las consultas reactivas de productos. */
+    private static final ExecutorService productoExecutor = Executors.newSingleThreadExecutor();
+
+    /** Cache LiveData del catálogo; se llena solo en la primera suscripción. */
+    private MutableLiveData<List<Producto>> productos;
+
+    /** DAO de productos reutilizado por el camino reactivo; las consultas siguen en él. */
+    private final ProductoDao productoDaoReactivo = new ProductoDao(this);
+
+    /**
+     * RF-04 / RF-05: expone el catálogo como LiveData, filtrado por nombre o SKU
+     * (el mismo criterio del DAO). La primera suscripción ejecuta la consulta
+     * inicial en el hilo de E/S; después la interfaz cambia el filtro con
+     * {@link #refrescarProductos(String)} sobre esta misma instancia.
+     *
+     * @param filtro texto de nombre o SKU; null o vacío lista todo el catálogo.
+     * @return LiveData con el catálogo filtrado, siempre la misma instancia.
+     */
+    public LiveData<List<Producto>> observarProductos(String filtro) {
+        if (productos == null) {
+            productos = new MutableLiveData<>();
+            refrescarProductos(filtro);
+        }
+        return productos;
+    }
+
+    /**
+     * Vuelve a consultar PRODUCTO con el filtro de nombre o SKU y publica el
+     * resultado en el LiveData. Seguro de llamar desde el hilo principal (cada
+     * tecla del buscador): el trabajo ocurre en el executor, que serializa las
+     * consultas y deja en la interfaz el último resultado pedido.
+     */
+    public void refrescarProductos(String filtro) {
+        final MutableLiveData<List<Producto>> destino = productos;
+        if (destino == null) {
+            return;
+        }
+        final String texto = filtro;
+        productoExecutor.execute(() ->
+                destino.postValue(productoDaoReactivo.buscarProductos(texto)));
     }
 }
