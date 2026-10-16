@@ -19,7 +19,6 @@ import androidx.core.content.ContextCompat;
 
 import com.android.sistemabodegaappandroid.db.DatabaseHelper;
 import com.android.sistemabodegaappandroid.db.ProductoDao;
-import com.android.sistemabodegaappandroid.db.ProveedorDao;
 import com.android.sistemabodegaappandroid.model.Categoria;
 import com.android.sistemabodegaappandroid.model.Movimiento;
 import com.android.sistemabodegaappandroid.model.Producto;
@@ -35,6 +34,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Alta, edición y movimiento de stock de un producto.
@@ -49,9 +50,17 @@ public class ProductoFormActivity extends AppCompatActivity {
     /** id del producto a editar; 0 (o ausente) significa producto nuevo. */
     public static final String EXTRA_ID_PRODUCTO = "EXTRA_ID_PRODUCTO";
 
+    /**
+     * Hilo dedicado al historial de movimientos del detalle (lista que se
+     * consultaba al abrir la pantalla en el hilo principal). Single-thread y
+     * estático, igual que los executors de DatabaseHelper: serializa los
+     * pedidos para que el último resultado publicado corresponda al último
+     * producto pedido.
+     */
+    private static final ExecutorService movimientosExecutor = Executors.newSingleThreadExecutor();
+
     private DatabaseHelper dbHelper;
     private ProductoDao productoDao;
-    private ProveedorDao proveedorDao;
     private SessionManager sessionManager;
 
     private TextInputEditText etSku;
@@ -86,7 +95,6 @@ public class ProductoFormActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         productoDao = new ProductoDao(dbHelper);
-        proveedorDao = new ProveedorDao(dbHelper);
         sessionManager = new SessionManager(this);
         idProducto = getIntent().getIntExtra(EXTRA_ID_PRODUCTO, 0);
 
@@ -161,18 +169,39 @@ public class ProductoFormActivity extends AppCompatActivity {
         });
     }
 
-    /** El proveedor es opcional: la primera opción siempre es "Sin proveedor". */
+    /**
+     * El proveedor es opcional: la primera opción siempre es "Sin proveedor".
+     *
+     * La lista llega por LiveData (CU-11), con el mismo patrón que las
+     * categorías: la consulta corre en el executor de DatabaseHelper y el
+     * observer rellena el spinner en el hilo principal.
+     */
     private void cargarProveedores() {
-        proveedores = proveedorDao.getAllProveedores();
-        List<String> nombres = new ArrayList<>();
-        nombres.add(getString(R.string.sin_proveedor));
-        for (Proveedor proveedor : proveedores) {
-            nombres.add(proveedor.getRazonSocial());
-        }
-        ArrayAdapter<String> adaptador = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, nombres);
-        adaptador.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerProveedor.setAdapter(adaptador);
+        dbHelper.observarProveedores().observe(this, lista -> {
+            if (lista == null) {
+                return;
+            }
+            // Al recrear el adapter el spinner vuelve a la posición 0, así que
+            // se recuerda la elegida para no perderla en un refresco.
+            int seleccionPrevia = spinnerProveedor.getSelectedItemPosition();
+            proveedores = lista;
+            List<String> nombres = new ArrayList<>();
+            nombres.add(getString(R.string.sin_proveedor));
+            for (Proveedor proveedor : proveedores) {
+                nombres.add(proveedor.getRazonSocial());
+            }
+            ArrayAdapter<String> adaptador = new ArrayAdapter<>(
+                    this, android.R.layout.simple_spinner_item, nombres);
+            adaptador.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerProveedor.setAdapter(adaptador);
+            // En edición el proveedor del producto se restaura aquí mismo: el
+            // LiveData entrega la lista después de cargarProductoExistente().
+            if (producto != null) {
+                spinnerProveedor.setSelection(indiceProveedor(producto.getIdProveedor()));
+            } else if (seleccionPrevia > 0 && seleccionPrevia <= proveedores.size()) {
+                spinnerProveedor.setSelection(seleccionPrevia);
+            }
+        });
     }
 
     /** Rellena el formulario con el producto existente y su historial de stock. */
@@ -426,9 +455,13 @@ public class ProductoFormActivity extends AppCompatActivity {
      * Puebla el selector del diálogo con los proveedores activos y devuelve la
      * lista en el mismo orden que las opciones. La primera opción es siempre
      * "Sin proveedor": en una entrada el proveedor es opcional.
+     *
+     * No consulta la base: reutiliza la lista que ya entregó el observer de
+     * observarProveedores() (mismo contenido, mismo orden), así el diálogo se
+     * arma sin tocar SQLite en el hilo principal.
      */
     private List<Proveedor> poblarSelectorProveedor(AutoCompleteTextView selector) {
-        List<Proveedor> lista = proveedorDao.getAllProveedores();
+        List<Proveedor> lista = proveedores;
         List<String> nombres = new ArrayList<>();
         nombres.add(getString(R.string.sin_proveedor));
         for (Proveedor proveedor : lista) {
@@ -451,11 +484,35 @@ public class ProductoFormActivity extends AppCompatActivity {
         mostrarStockYHistorial();
     }
 
-    /** Dibuja el stock actual y el historial de movimientos, recientes primero. */
+    /**
+     * Dibuja el stock actual y el historial de movimientos, recientes primero.
+     *
+     * El stock ya viene en memoria (se leyó junto con el producto), pero la
+     * lista de movimientos es una consulta: sale del hilo principal. El
+     * executor la ejecuta y el resultado vuelve por runOnUiThread. Ese camino
+     * es el adecuado acá porque es un pedido único atado a esta pantalla y a un
+     * producto concreto; el patrón LiveData de DatabaseHelper queda para las
+     * listas compartidas que varias pantallas refrescan, que necesitan caché.
+     */
     private void mostrarStockYHistorial() {
         tvStockActual.setText(getString(R.string.label_stock, producto.getStockActual()));
 
-        List<Movimiento> movimientos = productoDao.getMovimientosByProducto(idProducto);
+        final int idConsultado = idProducto;
+        movimientosExecutor.execute(() -> {
+            final List<Movimiento> movimientos = productoDao.getMovimientosByProducto(idConsultado);
+            runOnUiThread(() -> {
+                // La pantalla pudo destruirse mientras se consultaba (rotación
+                // o salida): no se toca una vista que ya no existe.
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                mostrarHistorial(movimientos);
+            });
+        });
+    }
+
+    /** Escribe el historial en el TextView. Solo se llama en el hilo principal. */
+    private void mostrarHistorial(List<Movimiento> movimientos) {
         if (movimientos.isEmpty()) {
             tvHistorialMovimientos.setText(R.string.sin_movimientos);
             return;

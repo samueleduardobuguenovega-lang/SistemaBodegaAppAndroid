@@ -390,6 +390,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // --- ADMINISTRACIÓN DE ROLES (RF-27) ---
 
+    /** Hilo dedicado a las consultas reactivas de roles. */
+    private static final ExecutorService rolExecutor = Executors.newSingleThreadExecutor();
+
+    /** Cache LiveData del listado de roles; se llena solo en la primera suscripción. */
+    private MutableLiveData<List<Rol>> roles;
+
+    /**
+     * RF-27: consulta de roles que sigue siendo la que ejecuta el executor.
+     * La interfaz no debe llamarla en el hilo principal; para eso está
+     * {@link #observarRoles()}.
+     */
     public List<Rol> getAllRoles() {
         List<Rol> list = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
@@ -422,6 +433,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         boolean exists = cursor.getCount() > 0;
         cursor.close();
         return exists;
+    }
+
+    /**
+     * RF-27: expone el listado de roles como LiveData, con el mismo esquema que
+     * categorías, usuarios, productos y proveedores. La primera suscripción
+     * dispara la consulta en el hilo de E/S.
+     */
+    public LiveData<List<Rol>> observarRoles() {
+        if (roles == null) {
+            roles = new MutableLiveData<>();
+            refrescarRoles();
+        }
+        return roles;
+    }
+
+    /**
+     * Vuelve a consultar ROL y publica el resultado. Seguro de llamar desde el
+     * hilo principal (alta de un rol): el trabajo ocurre en el executor y la
+     * lista se actualiza sola en la interfaz.
+     */
+    public void refrescarRoles() {
+        final MutableLiveData<List<Rol>> destino = roles;
+        if (destino == null) {
+            return;
+        }
+        rolExecutor.execute(() -> destino.postValue(getAllRoles()));
     }
 
     // --- ADMINISTRACIÓN DE USUARIOS (RF-27) ---
