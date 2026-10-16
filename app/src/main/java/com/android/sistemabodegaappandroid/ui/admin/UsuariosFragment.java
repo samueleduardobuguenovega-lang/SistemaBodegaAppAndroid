@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -90,8 +91,31 @@ public class UsuariosFragment extends Fragment {
         dbHelper.refrescarUsuarios();
     }
 
+    /**
+     * Observer de una sola apertura del diálogo: recibe los roles y se
+     * desuscribe solo. Es null mientras no hay ninguna apertura en curso.
+     */
+    private Observer<List<Rol>> observerRolesDialogo;
+
+    /**
+     * Los roles llegan por el mismo camino reactivo que el listado. Se abre el
+     * diálogo cuando el LiveData entrega (valor ya cacheado, o recién consultado
+     * en el executor): nunca se consulta la base en el hilo principal, y el
+     * estado vacío solo se informa cuando realmente no hay roles.
+     */
     private void showAddUserDialog() {
-        List<Rol> roles = dbHelper.getAllRoles();
+        if (observerRolesDialogo != null) {
+            return; // Ya hay una apertura esperando los roles: doble clic.
+        }
+        observerRolesDialogo = lista -> {
+            dbHelper.observarRoles().removeObserver(observerRolesDialogo);
+            observerRolesDialogo = null;
+            abrirDialogoUsuario(lista != null ? lista : new ArrayList<>());
+        };
+        dbHelper.observarRoles().observe(getViewLifecycleOwner(), observerRolesDialogo);
+    }
+
+    private void abrirDialogoUsuario(List<Rol> roles) {
         if (roles.isEmpty()) {
             Toast.makeText(requireContext(), R.string.msg_roles_requeridos, Toast.LENGTH_LONG).show();
             return;

@@ -56,19 +56,30 @@ public class RolesFragment extends Fragment {
 
         fabAddRole.setOnClickListener(v -> showAddRoleDialog());
 
+        // RF-27: el listado es reactivo; el DAO publica y la interfaz se
+        // suscribe, igual que en UsuariosFragment. Cada actualización llega
+        // al hilo principal.
+        dbHelper.observarRoles().observe(getViewLifecycleOwner(), lista -> {
+            if (lista == null) {
+                return;
+            }
+            rolesList = lista;
+            if (rolesList.isEmpty()) {
+                tvEmptyRoles.setVisibility(View.VISIBLE);
+                rvRoles.setVisibility(View.GONE);
+            } else {
+                tvEmptyRoles.setVisibility(View.GONE);
+                rvRoles.setVisibility(View.VISIBLE);
+                adapter.updateData(rolesList);
+            }
+        });
+
         loadRoles();
     }
 
+    /** Refresca el listado reactiva el DAO (el observer repinta la vista). */
     public void loadRoles() {
-        rolesList = dbHelper.getAllRoles();
-        if (rolesList.isEmpty()) {
-            tvEmptyRoles.setVisibility(View.VISIBLE);
-            rvRoles.setVisibility(View.GONE);
-        } else {
-            tvEmptyRoles.setVisibility(View.GONE);
-            rvRoles.setVisibility(View.VISIBLE);
-            adapter.updateData(rolesList);
-        }
+        dbHelper.refrescarRoles();
     }
 
     private void showAddRoleDialog() {
