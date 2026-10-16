@@ -3,8 +3,10 @@ package com.android.sistemabodegaappandroid.db;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -25,6 +27,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "sistema_bodega.db";
     private static final int DATABASE_VERSION = 4; // 4: MOVIMIENTO registra el proveedor de la entrada
+
+    /** Etiqueta de los registros de log del helper (fallos de migración, etc.). */
+    private static final String TAG = "DatabaseHelper";
 
     /**
      * Hilo dedicado para las consultas reactivas de CU-10. Evita ejecutar el DAO
@@ -202,6 +207,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * que le corresponden, en orden. Antes aquí se hacía DROP TABLE de todo,
      * lo que destruía usuarios y categorías al actualizar la app; esa es la
      * falla que esta versión corrige: los datos existentes deben sobrevivir.
+     *
+     * Cada paso es idempotente: el DDL de tablas usa IF NOT EXISTS y cada
+     * ALTER TABLE consulta antes a PRAGMA table_info, así que un reintento
+     * (por un fallo previo o por una base ya alterada) no vuelve a ejecutar
+     * un paso aplicado ni revienta. Si algo falla igual, el error queda
+     * registrado con el paso exacto y se propaga: SQLiteOpenHelper revierte
+     * la transacción y la base conserva su versión anterior, en vez de quedar
+     * marcada como migrada con la columna ausente.
      */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
@@ -216,15 +229,47 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 4) {
             // v4 agrega el proveedor de la entrada al historial de movimientos.
             // ALTER TABLE incremental: no se recrea la tabla porque eso
-            // destruiría los movimientos ya registrados. El try/catch cubre el
-            // caso de una base que ya tuviera la columna por una migración
-            // previa interrumpida.
-            try {
-                db.execSQL("ALTER TABLE " + TABLE_MOVIMIENTO
-                        + " ADD COLUMN " + COLUMN_MOV_ID_PROVEEDOR + " INTEGER");
-            } catch (android.database.SQLException columnaYaExistente) {
-                // La columna ya estaba: nada que migrar, se conservan los datos.
+            // destruiría los movimientos ya registrados.
+            agregarColumnaSiFalta(db, TABLE_MOVIMIENTO, COLUMN_MOV_ID_PROVEEDOR,
+                    "ALTER TABLE " + TABLE_MOVIMIENTO
+                            + " ADD COLUMN " + COLUMN_MOV_ID_PROVEEDOR + " INTEGER",
+                    "v4: MOVIMIENTO." + COLUMN_MOV_ID_PROVEEDOR);
+        }
+    }
+
+    /** true si PRAGMA table_info muestra la columna en la tabla indicada. */
+    private boolean columnaExisteEnTabla(SQLiteDatabase db, String tabla, String columna) {
+        try (Cursor cursor = db.rawQuery("PRAGMA table_info(" + tabla + ")", null)) {
+            int indiceNombre = cursor.getColumnIndexOrThrow("name");
+            while (cursor.moveToNext()) {
+                if (columna.equalsIgnoreCase(cursor.getString(indiceNombre))) {
+                    return true;
+                }
             }
+        }
+        return false;
+    }
+
+    /**
+     * Aplica un ALTER TABLE solo si la columna todavía no existe, para que un
+     * paso repetido no falle y un reintento pueda retomar la migración donde
+     * quedó. Un fallo inesperado se registra con el nombre del paso y se
+     * propaga: no se deja la base a medias en silencio.
+     *
+     * @param paso identificador del paso de migración, usado en el log de error.
+     */
+    private void agregarColumnaSiFalta(SQLiteDatabase db, String tabla, String columna,
+                                       String alterTable, String paso) {
+        if (columnaExisteEnTabla(db, tabla, columna)) {
+            // Migración previamente aplicada o base ya alterada: nada que hacer.
+            return;
+        }
+        try {
+            db.execSQL(alterTable);
+        } catch (SQLException e) {
+            Log.e(TAG, "Fallo el paso de migracion " + paso
+                    + " sobre " + tabla + ": " + alterTable, e);
+            throw e;
         }
     }
 
