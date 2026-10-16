@@ -11,6 +11,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.android.sistemabodegaappandroid.model.Categoria;
 import com.android.sistemabodegaappandroid.model.Producto;
+import com.android.sistemabodegaappandroid.model.Proveedor;
 import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.util.PasswordUtils;
@@ -598,5 +599,45 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         final String texto = filtro;
         productoExecutor.execute(() ->
                 destino.postValue(productoDaoReactivo.buscarProductos(texto)));
+    }
+
+    // ---------------------------------------------------------------------
+    // PROVEEDORES (CU-11)
+    // ---------------------------------------------------------------------
+
+    /** Hilo dedicado a las consultas reactivas de proveedores. */
+    private static final ExecutorService proveedorExecutor = Executors.newSingleThreadExecutor();
+
+    /** Cache LiveData del listado; se llena solo en la primera suscripción. */
+    private MutableLiveData<List<Proveedor>> proveedores;
+
+    /** DAO de proveedores reutilizado por el camino reactivo; las consultas siguen en él. */
+    private final ProveedorDao proveedorDaoReactivo = new ProveedorDao(this);
+
+    /**
+     * CU-11: expone el listado de proveedores habilitados como LiveData, con el
+     * mismo esquema que categorías, usuarios y productos. La primera
+     * suscripción dispara la consulta en el hilo de E/S.
+     */
+    public LiveData<List<Proveedor>> observarProveedores() {
+        if (proveedores == null) {
+            proveedores = new MutableLiveData<>();
+            refrescarProveedores();
+        }
+        return proveedores;
+    }
+
+    /**
+     * Vuelve a consultar PROVEEDOR y publica el resultado. Seguro de llamar
+     * desde el hilo principal (alta, edición o baja lógica): el trabajo ocurre
+     * en el executor y la lista se actualiza sola en la interfaz.
+     */
+    public void refrescarProveedores() {
+        final MutableLiveData<List<Proveedor>> destino = proveedores;
+        if (destino == null) {
+            return;
+        }
+        proveedorExecutor.execute(() ->
+                destino.postValue(proveedorDaoReactivo.getAllProveedores()));
     }
 }

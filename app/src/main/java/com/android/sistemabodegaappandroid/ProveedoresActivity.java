@@ -21,7 +21,6 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.Collections;
-import java.util.List;
 
 /**
  * Listado de proveedores habilitados.
@@ -29,9 +28,13 @@ import java.util.List;
  * Sigue el mismo esqueleto que la pantalla de productos, pero sin búsqueda:
  * el DAO de proveedores no expone filtro y agregarlo exigiría tocar la capa
  * de datos, que está acotada a este módulo.
+ *
+ * La lista se expone como LiveData desde {@link DatabaseHelper}: la consulta
+ * corre en el executor del helper, nunca en el hilo principal.
  */
 public class ProveedoresActivity extends AppCompatActivity {
 
+    private DatabaseHelper dbHelper;
     private ProveedorDao proveedorDao;
     private ProveedorAdapter adapter;
     private RecyclerView rvProveedores;
@@ -46,7 +49,8 @@ public class ProveedoresActivity extends AppCompatActivity {
         // El notch y las barras del sistema no deben tapar el contenido.
         EdgeToEdgeInsets.apply(this, findViewById(R.id.rootProveedores));
 
-        proveedorDao = new ProveedorDao(new DatabaseHelper(this));
+        dbHelper = new DatabaseHelper(this);
+        proveedorDao = new ProveedorDao(dbHelper);
         rvProveedores = findViewById(R.id.rvProveedores);
         tvVacioProveedores = findViewById(R.id.tvVacioProveedores);
         ivVacioProveedores = findViewById(R.id.ivVacioProveedores);
@@ -73,6 +77,20 @@ public class ProveedoresActivity extends AppCompatActivity {
         rvProveedores.setLayoutManager(new LinearLayoutManager(this));
         rvProveedores.setAdapter(adapter);
 
+        // CU-11: la lista observa el LiveData del helper. La consulta corre en
+        // el executor, nunca en el hilo principal, y cada actualización llega
+        // ya resuelta al hilo de UI junto con el estado vacío.
+        dbHelper.observarProveedores().observe(this, proveedores -> {
+            if (proveedores == null) {
+                return;
+            }
+            adapter.updateData(proveedores);
+            boolean vacio = proveedores.isEmpty();
+            tvVacioProveedores.setVisibility(vacio ? View.VISIBLE : View.GONE);
+            ivVacioProveedores.setVisibility(vacio ? View.VISIBLE : View.GONE);
+            rvProveedores.setVisibility(vacio ? View.GONE : View.VISIBLE);
+        });
+
         fabAgregar.setOnClickListener(v ->
                 startActivity(new Intent(this, ProveedorFormActivity.class)));
     }
@@ -81,17 +99,7 @@ public class ProveedoresActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // Vuelve a leer al regresar del formulario para reflejar altas y cambios.
-        cargarProveedores();
-    }
-
-    /** Consulta al DAO y refleja el resultado en la lista y en el estado vacío. */
-    private void cargarProveedores() {
-        List<Proveedor> proveedores = proveedorDao.getAllProveedores();
-        adapter.updateData(proveedores);
-        boolean vacio = proveedores.isEmpty();
-        tvVacioProveedores.setVisibility(vacio ? View.VISIBLE : View.GONE);
-        ivVacioProveedores.setVisibility(vacio ? View.VISIBLE : View.GONE);
-        rvProveedores.setVisibility(vacio ? View.GONE : View.VISIBLE);
+        dbHelper.refrescarProveedores();
     }
 
     /**
@@ -108,7 +116,7 @@ public class ProveedoresActivity extends AppCompatActivity {
                                     ? R.string.msg_proveedor_deshabilitado
                                     : R.string.msg_proveedor_error,
                             Toast.LENGTH_SHORT).show();
-                    cargarProveedores();
+                    dbHelper.refrescarProveedores();
                 })
                 .setNegativeButton(R.string.no, null)
                 .show();
