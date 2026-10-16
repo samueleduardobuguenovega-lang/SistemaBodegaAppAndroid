@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diálogo de entrada/salida de stock. La validación de la cantidad se hace
+     en el botón positivo para poder mantenerlo abierto si el dato es inválido. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tvStockActualDialog"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="@color/primary"/>
+
+    <TextView
+        android:id="@+id/tvLabelTipoMovimiento"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/hint_tipo_movimiento"
+        android:textSize="14sp"
+        android:textColor="@color/text_secondary"/>
+
+    <RadioGroup
+        android:id="@+id/rgTipoMovimiento"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/rbEntrada"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/tipo_entrada"
+            android:textColor="@color/text_primary"/>
+
+        <RadioButton
+            android:id="@+id/rbSalida"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="@string/tipo_salida"
+            android:textColor="@color/text_primary"/>
+    </RadioGroup>
+
+    <!-- El proveedor solo aplica a entradas: la actividad lo oculta cuando se
+         selecciona SALIDA, por eso el contenedor nace visible (ENTRADA es la
+         opción marcada por defecto). -->
+    <LinearLayout
+        android:id="@+id/contenedorProveedorMovimiento"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilProveedorMovimiento"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_proveedor_movimiento">
+
+            <AutoCompleteTextView
+                android:id="@+id/spinnerProveedorMovimiento"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none"
+                android:textColor="@color/text_primary"/>
+        </com.google.android.material.textfield.TextInputLayout>
+    </LinearLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilCantidadMovimiento"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/hint_cantidad_movimiento">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etCantidadMovimiento"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_placeholder"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+</LinearLayout>
