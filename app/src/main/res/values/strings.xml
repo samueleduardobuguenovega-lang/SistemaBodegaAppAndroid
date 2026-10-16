@@ -5,6 +5,7 @@
     <string name="hint_username">Nombre de usuario</string>
     <string name="hint_password">Contraseña</string>
     <string name="btn_login">Iniciar Sesión</string>
+    <string name="login_verificando">Verificando…</string>
     <string name="default_credentials_notice">Usuario inicial: admin · Contraseña: admin (cámbiela al entrar)</string>
     <string name="error_empty_fields">Por favor, ingrese el usuario y la contraseña.</string>
     <string name="error_inactive_user">Usuario deshabilitado. Contacte al administrador</string>
