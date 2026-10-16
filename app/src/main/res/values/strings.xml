@@ -72,7 +72,6 @@
     <string name="label_proveedor">Proveedor: %1$s</string>
     <string name="label_precio_venta">Precio de venta: %1$s</string>
     <string name="label_stock">Stock: %1$d</string>
-    <string name="label_stock_minimo">Stock mínimo: %1$d</string>
     <string name="sin_categoria">Sin categoría</string>
     <string name="sin_proveedor">Sin proveedor</string>
     <string name="stock_bajo">Stock bajo</string>
