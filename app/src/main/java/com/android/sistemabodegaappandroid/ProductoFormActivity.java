@@ -282,12 +282,21 @@ public class ProductoFormActivity extends AppCompatActivity {
 
     /** Valida, construye el modelo y persiste según sea alta o edición. */
     private void guardar() {
-        String sku = texto(etSku);
         String nombre = texto(etNombre);
-
-        if (TextUtils.isEmpty(sku) || TextUtils.isEmpty(nombre)) {
-            Toast.makeText(this, R.string.msg_nombre_sku_requerido, Toast.LENGTH_SHORT).show();
+        if (TextUtils.isEmpty(nombre)) {
+            Toast.makeText(this, "El nombre del producto no puede estar vacío", Toast.LENGTH_SHORT).show();
+            etNombre.requestFocus();
             return;
+        }
+
+        String sku = texto(etSku);
+        if (TextUtils.isEmpty(sku)) {
+            sku = "SKU-" + (System.currentTimeMillis() % 10000000) + "-" + (int) (Math.random() * 1000);
+            while (productoDao.existeSkuEnOtroProducto(sku, idProducto)) {
+                sku = "SKU-" + (System.currentTimeMillis() % 10000000) + "-" + (int) (Math.random() * 1000);
+            }
+            etSku.setText(sku);
+            Toast.makeText(this, "SKU generado automáticamente: " + sku, Toast.LENGTH_SHORT).show();
         }
 
         double precioCosto = parseDecimal(texto(etPrecioCosto));
@@ -324,9 +333,10 @@ public class ProductoFormActivity extends AppCompatActivity {
         }
     }
 
-    private void guardarAlta(String sku, String nombre, String descripcion,
+    private void guardarAlta(String skuParam, String nombre, String descripcion,
                              double precioCosto, double precioVenta, int stockMinimo,
                              int idCategoria, int idProveedor) {
+        String sku = skuParam;
         Producto nuevo = new Producto();
         nuevo.setSkuCodigo(sku);
         nuevo.setNombre(nombre);
@@ -341,6 +351,14 @@ public class ProductoFormActivity extends AppCompatActivity {
         nuevo.setIdProveedor(idProveedor);
 
         long resultado = productoDao.insertProducto(nuevo);
+        if (resultado == -1) {
+            // Reintento automático con SKU nuevo si hubo colisión imprevista
+            sku = "SKU-" + (System.currentTimeMillis() % 10000000) + "-" + (int) (Math.random() * 1000);
+            nuevo.setSkuCodigo(sku);
+            etSku.setText(sku);
+            resultado = productoDao.insertProducto(nuevo);
+        }
+
         if (resultado == -1) {
             Toast.makeText(this, R.string.msg_sku_duplicado, Toast.LENGTH_LONG).show();
             return;
