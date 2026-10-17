@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Version monocroma para los iconos tematizados (Android 13+): el lanzador la
+  tinta con el color del tema, asi que solo importa la silueta. Se deja la cinta
+  sin dibujar porque al perder el color quedaria como una franja invisible.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M29,45 L79,45 L72,31 L36,31 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M29,45 H79 V70 A4,4 0 0 1 75,74 H33 A4,4 0 0 1 29,70 Z" />
+</vector>
