@@ -241,7 +241,35 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             agregarColumnaSiFalta(db, TABLE_ROL, COLUMN_ROL_PERMISOS,
                     "ALTER TABLE " + TABLE_ROL + " ADD COLUMN " + COLUMN_ROL_PERMISOS + " TEXT",
                     "v5: ROL." + COLUMN_ROL_PERMISOS);
+            // La columna es la que autoriza desde esta version: si queda en NULL
+            // en los roles que ya existian, la instalacion actualizada queda sin
+            // acceso a ningun modulo, administrador incluido.
+            rellenarPermisosDeRolesExistentes(db);
         }
+    }
+
+    /**
+     * Rellena ROL.permisos en los roles creados antes de la v5.
+     *
+     * Replica el modelo de acceso de la version anterior, donde la administracion
+     * se decidia por el nombre del rol y el inventario lo veia cualquier rol:
+     * «Administrador» recibe los cinco modulos y el resto los de inventario. Solo
+     * se tocan las filas vacias, asi que una segunda ejecucion no pisa permisos
+     * que el usuario ya haya definido.
+     *
+     * @param db base en la que ya se agrego la columna.
+     */
+    private void rellenarPermisosDeRolesExistentes(SQLiteDatabase db) {
+        String todos = "USUARIOS,PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS";
+        String inventario = "PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS";
+        String sinPermisos = " AND (" + COLUMN_ROL_PERMISOS + " IS NULL"
+                + " OR TRIM(" + COLUMN_ROL_PERMISOS + ") = '')";
+        db.execSQL("UPDATE " + TABLE_ROL + " SET " + COLUMN_ROL_PERMISOS + " = ?"
+                + " WHERE UPPER(TRIM(" + COLUMN_ROL_NOMBRE + ")) = 'ADMINISTRADOR'" + sinPermisos,
+                new Object[]{todos});
+        db.execSQL("UPDATE " + TABLE_ROL + " SET " + COLUMN_ROL_PERMISOS + " = ?"
+                + " WHERE UPPER(TRIM(" + COLUMN_ROL_NOMBRE + ")) <> 'ADMINISTRADOR'" + sinPermisos,
+                new Object[]{inventario});
     }
 
     /** true si PRAGMA table_info muestra la columna en la tabla indicada. */

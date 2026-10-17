@@ -209,6 +209,30 @@ public class CasosDeUsoFaltantesTest {
         assertTrue("Categorías exige el permiso CATEGORIAS",
                 leer("CategoriasActivity.java").contains("AccesoModulo.permitido"));
     }
+    // --- Migración v5: si los permisos autorizan, tienen que existir ---
+
+    /**
+     * Una columna que pasa a autorizar el acceso no puede quedar en NULL en las
+     * filas que ya existían: sin relleno, toda instalación que se actualice queda
+     * con los módulos negados, incluido el administrador.
+     */
+    @Test
+    public void laMigracionCincoRellenaLosPermisosDeLosRolesExistentes() throws IOException {
+        String fuente = leer("DatabaseHelper.java");
+        String migracion = entre(fuente, "if (oldVersion < 5) {", "    }");
+        assertTrue("La migración v5 debe rellenar los permisos de los roles que ya existían",
+                migracion.contains("rellenarPermisosDeRolesExistentes(db)"));
+
+        String relleno = entre(fuente, "private void rellenarPermisosDeRolesExistentes",
+                "private boolean columnaExisteEnTabla");
+        assertTrue("El relleno va por UPDATE sobre ROL", relleno.contains("UPDATE \" + TABLE_ROL"));
+        assertTrue("El administrador recibe los cinco módulos",
+                relleno.contains("USUARIOS,PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS"));
+        assertTrue("El resto conserva el acceso de inventario de la versión anterior",
+                relleno.contains("PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS"));
+        assertTrue("Solo se tocan las filas sin permisos", relleno.contains("IS NULL"));
+    }
+
     private String leer(String nombre) throws IOException {
         Path archivo = buscarArchivo(nombre);
         assertNotNull("Archivo no encontrado: " + nombre, archivo);
