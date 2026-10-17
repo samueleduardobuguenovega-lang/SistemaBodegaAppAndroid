@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "sistema_bodega.db";
-    private static final int DATABASE_VERSION = 4; // 4: MOVIMIENTO registra el proveedor de la entrada
+    private static final int DATABASE_VERSION = 5; // 5: ROL incluye columna permisos
 
     /** Etiqueta de los registros de log del helper (fallos de migración, etc.). */
     private static final String TAG = "DatabaseHelper";
@@ -45,6 +45,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_ROL_ID = "id_rol";
     public static final String COLUMN_ROL_NOMBRE = "nombre_rol";
     public static final String COLUMN_ROL_DESCRIPCION = "descripcion";
+    public static final String COLUMN_ROL_PERMISOS = "permisos";
 
     // Tabla USUARIO
     public static final String TABLE_USUARIO = "USUARIO";
@@ -166,7 +167,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String CREATE_ROL_TABLE = "CREATE TABLE " + TABLE_ROL + " ("
                 + COLUMN_ROL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + COLUMN_ROL_NOMBRE + " TEXT UNIQUE NOT NULL, "
-                + COLUMN_ROL_DESCRIPCION + " TEXT"
+                + COLUMN_ROL_DESCRIPCION + " TEXT, "
+                + COLUMN_ROL_PERMISOS + " TEXT"
                 + ");";
         db.execSQL(CREATE_ROL_TABLE);
 
@@ -235,6 +237,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                             + " ADD COLUMN " + COLUMN_MOV_ID_PROVEEDOR + " INTEGER",
                     "v4: MOVIMIENTO." + COLUMN_MOV_ID_PROVEEDOR);
         }
+        if (oldVersion < 5) {
+            agregarColumnaSiFalta(db, TABLE_ROL, COLUMN_ROL_PERMISOS,
+                    "ALTER TABLE " + TABLE_ROL + " ADD COLUMN " + COLUMN_ROL_PERMISOS + " TEXT",
+                    "v5: ROL." + COLUMN_ROL_PERMISOS);
+        }
     }
 
     /** true si PRAGMA table_info muestra la columna en la tabla indicada. */
@@ -278,16 +285,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         ContentValues cvAdminRol = new ContentValues();
         cvAdminRol.put(COLUMN_ROL_NOMBRE, "Administrador");
         cvAdminRol.put(COLUMN_ROL_DESCRIPCION, "Acceso total al sistema");
+        cvAdminRol.put(COLUMN_ROL_PERMISOS, "USUARIOS,PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS");
         long adminRolId = db.insert(TABLE_ROL, null, cvAdminRol);
 
         ContentValues cvOperadorRol = new ContentValues();
         cvOperadorRol.put(COLUMN_ROL_NOMBRE, "Operador");
         cvOperadorRol.put(COLUMN_ROL_DESCRIPCION, "Acceso a operaciones de bodega");
+        cvOperadorRol.put(COLUMN_ROL_PERMISOS, "PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS");
         db.insert(TABLE_ROL, null, cvOperadorRol);
 
         ContentValues cvVendedorRol = new ContentValues();
         cvVendedorRol.put(COLUMN_ROL_NOMBRE, "Vendedor");
         cvVendedorRol.put(COLUMN_ROL_DESCRIPCION, "Acceso a ventas y consultas");
+        cvVendedorRol.put(COLUMN_ROL_PERMISOS, "PRODUCTOS,CATEGORIAS");
         db.insert(TABLE_ROL, null, cvVendedorRol);
 
         // Insertar usuario administrador por defecto (admin / admin)
@@ -410,7 +420,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 Rol rol = new Rol(
                         cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ROL_ID)),
                         cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROL_NOMBRE)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROL_DESCRIPCION))
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROL_DESCRIPCION)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROL_PERMISOS))
                 );
                 list.add(rol);
             } while (cursor.moveToNext());
@@ -424,7 +435,30 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_ROL_NOMBRE, rol.getNombreRol().trim());
         cv.put(COLUMN_ROL_DESCRIPCION, rol.getDescripcion() != null ? rol.getDescripcion().trim() : "");
+        cv.put(COLUMN_ROL_PERMISOS, rol.getPermisos() != null ? rol.getPermisos().trim() : "");
         return db.insert(TABLE_ROL, null, cv);
+    }
+
+    public boolean updateRol(Rol rol) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COLUMN_ROL_NOMBRE, rol.getNombreRol().trim());
+        cv.put(COLUMN_ROL_DESCRIPCION, rol.getDescripcion() != null ? rol.getDescripcion().trim() : "");
+        cv.put(COLUMN_ROL_PERMISOS, rol.getPermisos() != null ? rol.getPermisos().trim() : "");
+        int rows = db.update(TABLE_ROL, cv, COLUMN_ROL_ID + " = ?", new String[]{String.valueOf(rol.getIdRol())});
+        return rows > 0;
+    }
+
+    public boolean deleteRol(int idRol) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = db.rawQuery("SELECT 1 FROM " + TABLE_USUARIO + " WHERE " + COLUMN_USUARIO_ID_ROL + " = ?", new String[]{String.valueOf(idRol)});
+        boolean inUse = cursor.getCount() > 0;
+        cursor.close();
+        if (inUse) {
+            return false;
+        }
+        int rows = db.delete(TABLE_ROL, COLUMN_ROL_ID + " = ?", new String[]{String.valueOf(idRol)});
+        return rows > 0;
     }
 
     public boolean isRoleNameExists(String nombreRol) {
@@ -507,6 +541,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_USUARIO_ACTIVO, nuevoEstado);
         int rows = db.update(TABLE_USUARIO, cv, COLUMN_USUARIO_ID + " = ?", new String[]{String.valueOf(idUsuario)});
+        return rows > 0;
+    }
+
+    public boolean updateUsuario(Usuario usuario, String newPassword) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COLUMN_USUARIO_USERNAME, usuario.getUsername().trim());
+        cv.put(COLUMN_USUARIO_NOMBRE_COMPLETO, usuario.getNombreCompleto().trim());
+        cv.put(COLUMN_USUARIO_ID_ROL, usuario.getIdRol());
+        cv.put(COLUMN_USUARIO_ACTIVO, usuario.getActivo());
+        if (newPassword != null && !newPassword.trim().isEmpty()) {
+            cv.put(COLUMN_USUARIO_PASSWORD_HASH, PasswordUtils.hashPassword(newPassword.trim()));
+        }
+        int rows = db.update(TABLE_USUARIO, cv, COLUMN_USUARIO_ID + " = ?", new String[]{String.valueOf(usuario.getIdUsuario())});
+        return rows > 0;
+    }
+
+    public boolean deleteUsuario(int idUsuario) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        int rows = db.delete(TABLE_USUARIO, COLUMN_USUARIO_ID + " = ?", new String[]{String.valueOf(idUsuario)});
         return rows > 0;
     }
 

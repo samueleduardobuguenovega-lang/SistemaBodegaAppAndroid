@@ -28,12 +28,12 @@ public class CasosDeUsoFaltantesTest {
 
     // --- RF-08: baja lógica de productos ---
 
-    /** v4 existe justamente para esta columna; sin ella el esquema no cambió. */
+    /** v5 existe justamente para esta columna de permisos; sin ella el esquema no cambió. */
     @Test
-    public void databaseVersionEsCuatro() throws IOException {
+    public void databaseVersionEsCinco() throws IOException {
         String fuente = leer("DatabaseHelper.java");
-        assertTrue("DATABASE_VERSION debe valer 4",
-                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*4\\s*;.*"));
+        assertTrue("DATABASE_VERSION debe valer 5",
+                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*5\\s*;.*"));
     }
 
     /** La migración v4 debe usar ALTER TABLE incremental, nunca DROP TABLE. */
