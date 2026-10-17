@@ -154,7 +154,16 @@ public class ProductoDao {
         cv.put(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL, p.getStockActual());
         cv.put(DatabaseHelper.COLUMN_PROD_STOCK_MINIMO, p.getStockMinimo());
         cv.put(DatabaseHelper.COLUMN_PROD_ID_CATEGORIA, p.getIdCategoria());
-        cv.put(DatabaseHelper.COLUMN_PROD_ID_PROVEEDOR, p.getIdProveedor());
+        // El formulario manda 0 cuando el usuario elige "Sin proveedor". 0 no es
+        // NULL y no existe ninguna fila PROVEEDOR con ese id (AUTOINCREMENT
+        // arranca en 1), asi que con las claves foraneas activas el alta fallaba
+        // siempre con "FOREIGN KEY constraint failed". El proveedor es opcional
+        // en el esquema (columna nullable): se guarda NULL, nunca 0.
+        if (p.getIdProveedor() > 0) {
+            cv.put(DatabaseHelper.COLUMN_PROD_ID_PROVEEDOR, p.getIdProveedor());
+        } else {
+            cv.putNull(DatabaseHelper.COLUMN_PROD_ID_PROVEEDOR);
+        }
         cv.put(DatabaseHelper.COLUMN_PROD_ACTIVO, p.getActivo());
         try {
             return db.insert(DatabaseHelper.TABLE_PRODUCTO, null, cv);
@@ -178,7 +187,14 @@ public class ProductoDao {
         cv.put(DatabaseHelper.COLUMN_PROD_PRECIO_VENTA, p.getPrecioVenta());
         cv.put(DatabaseHelper.COLUMN_PROD_STOCK_MINIMO, p.getStockMinimo());
         cv.put(DatabaseHelper.COLUMN_PROD_ID_CATEGORIA, p.getIdCategoria());
-        cv.put(DatabaseHelper.COLUMN_PROD_ID_PROVEEDOR, p.getIdProveedor());
+        // Misma razon que en el alta: "Sin proveedor" llega como 0 y la clave
+        // foranea lo rechaza. 0 significa "sin proveedor", que en el esquema es
+        // NULL.
+        if (p.getIdProveedor() > 0) {
+            cv.put(DatabaseHelper.COLUMN_PROD_ID_PROVEEDOR, p.getIdProveedor());
+        } else {
+            cv.putNull(DatabaseHelper.COLUMN_PROD_ID_PROVEEDOR);
+        }
         cv.put(DatabaseHelper.COLUMN_PROD_ACTIVO, p.getActivo());
         try {
             int filas = db.update(DatabaseHelper.TABLE_PRODUCTO, cv,
