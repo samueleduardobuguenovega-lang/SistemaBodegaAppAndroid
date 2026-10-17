@@ -311,7 +311,8 @@ public class ProductoFormActivity extends AppCompatActivity {
         int stockMinimo = parseEntero(texto(etStockMinimo));
 
         // RF-03: el stock inicial se registra en el alta. El campo vacío vale
-        // cero; parseEntero() ya devuelve -1 si el texto no es un número.
+        // cero y es de tipo numérico, así que no admite texto: parseEntero()
+        // devuelve 0 si el texto no es un número.
         String textoStockInicial = texto(etStockInicial);
         int stockInicial = textoStockInicial.isEmpty() ? 0 : parseEntero(textoStockInicial);
 

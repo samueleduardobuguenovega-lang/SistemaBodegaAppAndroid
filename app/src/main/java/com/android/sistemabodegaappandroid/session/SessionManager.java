@@ -100,11 +100,11 @@ public class SessionManager {
     /**
      * Indica si el usuario en sesion tiene privilegios de Administrador.
      *
-     * El rol se deriva del registro del usuario en la base, no de lo que el
-     * usuario haya elegido en la interfaz: por eso se consulta por nombre y no
-     * por id, que depende del orden de insercion del seed.
+     * Los permisos se leen de ROL por el id del rol guardado en la sesion, no
+     * por su nombre: renombrar «Administrador» no debe cambiar lo que el rol
+     * puede hacer, y un rol nuevo con el permiso marcado tiene que entrar.
      *
-     * @return true solo si el rol de la sesion es Administrador.
+     * @return true solo si el rol de la sesion declara el permiso USUARIOS.
      */
     public boolean esAdministrador() {
         return tienePermiso(Permisos.USUARIOS);

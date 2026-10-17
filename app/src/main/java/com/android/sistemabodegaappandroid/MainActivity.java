@@ -72,9 +72,9 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Los accesos de inventario se construyen en código: mantienen el mismo
-        // aspecto que btnAdminCategorias y quedan visibles para cualquier rol,
-        // porque solo usuarios y roles exigen ser administrador.
+        // Los accesos de inventario se construyen en código, con el mismo aspecto
+        // que btnAdminCategorias. Su visibilidad la fija mostrarSegunPermiso unas
+        // líneas más abajo, con el permiso de cada módulo.
         crearBotonesInventario();
 
         // RF-27: el rol decide qué accesos ve el panel. Se aplica acá y no al
