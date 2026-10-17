@@ -55,5 +55,27 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp" />
 
+        <ImageView
+            android:id="@+id/btnEditUsuario"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Editar"
+            android:padding="6dp"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="@color/primary" />
+
+        <ImageView
+            android:id="@+id/btnDeleteUsuario"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Eliminar"
+            android:padding="6dp"
+            android:src="@android:drawable/ic_menu_delete"
+            app:tint="@color/accent" />
+
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

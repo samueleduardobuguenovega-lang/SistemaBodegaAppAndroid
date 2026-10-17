@@ -3,6 +3,7 @@ package com.android.sistemabodegaappandroid.ui.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -20,12 +21,19 @@ public class UsuarioAdapter extends RecyclerView.Adapter<UsuarioAdapter.UsuarioV
         void onStatusChange(Usuario usuario, boolean isChecked);
     }
 
+    public interface OnUserActionListener {
+        void onEdit(Usuario usuario);
+        void onDelete(Usuario usuario);
+    }
+
     private List<Usuario> usuarios;
     private final OnUserStatusChangeListener statusChangeListener;
+    private final OnUserActionListener actionListener;
 
-    public UsuarioAdapter(List<Usuario> usuarios, OnUserStatusChangeListener statusChangeListener) {
+    public UsuarioAdapter(List<Usuario> usuarios, OnUserStatusChangeListener statusChangeListener, OnUserActionListener actionListener) {
         this.usuarios = usuarios;
         this.statusChangeListener = statusChangeListener;
+        this.actionListener = actionListener;
     }
 
     public void updateData(List<Usuario> newUsuarios) {
@@ -56,6 +64,18 @@ public class UsuarioAdapter extends RecyclerView.Adapter<UsuarioAdapter.UsuarioV
                 statusChangeListener.onStatusChange(u, isChecked);
             }
         });
+
+        holder.btnEditUsuario.setOnClickListener(v -> {
+            if (actionListener != null) {
+                actionListener.onEdit(u);
+            }
+        });
+
+        holder.btnDeleteUsuario.setOnClickListener(v -> {
+            if (actionListener != null) {
+                actionListener.onDelete(u);
+            }
+        });
     }
 
     @Override
@@ -68,6 +88,8 @@ public class UsuarioAdapter extends RecyclerView.Adapter<UsuarioAdapter.UsuarioV
         TextView tvUsername;
         TextView tvRolName;
         MaterialSwitch switchActivo;
+        ImageView btnEditUsuario;
+        ImageView btnDeleteUsuario;
 
         public UsuarioViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -75,6 +97,8 @@ public class UsuarioAdapter extends RecyclerView.Adapter<UsuarioAdapter.UsuarioV
             tvUsername = itemView.findViewById(R.id.tvUsername);
             tvRolName = itemView.findViewById(R.id.tvRolName);
             switchActivo = itemView.findViewById(R.id.switchActivo);
+            btnEditUsuario = itemView.findViewById(R.id.btnEditUsuario);
+            btnDeleteUsuario = itemView.findViewById(R.id.btnDeleteUsuario);
         }
     }
 }

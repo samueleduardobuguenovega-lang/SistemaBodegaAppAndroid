@@ -68,13 +68,21 @@ public class UsuariosFragment extends Fragment {
             } else {
                 Toast.makeText(requireContext(), R.string.msg_error_actualizar_estado, Toast.LENGTH_SHORT).show();
             }
+        }, new UsuarioAdapter.OnUserActionListener() {
+            @Override
+            public void onEdit(Usuario usuario) {
+                showEditUserDialog(usuario);
+            }
+
+            @Override
+            public void onDelete(Usuario usuario) {
+                confirmDeleteUser(usuario);
+            }
         });
         rvUsuarios.setAdapter(adapter);
 
         fabAddUser.setOnClickListener(v -> showAddUserDialog());
 
-        // CU-27: el listado es reactivo; el DAO publica y la interfaz se
-        // suscribe. Cada actualización llega al hilo principal.
         dbHelper.observarUsuarios().observe(getViewLifecycleOwner(), lista -> {
             if (lista == null) {
                 return;
@@ -86,56 +94,64 @@ public class UsuariosFragment extends Fragment {
         });
     }
 
-    /** Refresca el listado reactiva el DAO (el observer repinta la vista). */
     public void loadUsuarios() {
         dbHelper.refrescarUsuarios();
     }
 
-    /**
-     * Observer de una sola apertura del diálogo: recibe los roles y se
-     * desuscribe solo. Es null mientras no hay ninguna apertura en curso.
-     */
     private Observer<List<Rol>> observerRolesDialogo;
 
-    /**
-     * Los roles llegan por el mismo camino reactivo que el listado. Se abre el
-     * diálogo cuando el LiveData entrega (valor ya cacheado, o recién consultado
-     * en el executor): nunca se consulta la base en el hilo principal, y el
-     * estado vacío solo se informa cuando realmente no hay roles.
-     */
     private void showAddUserDialog() {
         if (observerRolesDialogo != null) {
-            return; // Ya hay una apertura esperando los roles: doble clic.
+            return;
         }
         observerRolesDialogo = lista -> {
             dbHelper.observarRoles().removeObserver(observerRolesDialogo);
             observerRolesDialogo = null;
-            abrirDialogoUsuario(lista != null ? lista : new ArrayList<>());
+            abrirDialogoUsuario(null, lista != null ? lista : new ArrayList<>());
         };
         dbHelper.observarRoles().observe(getViewLifecycleOwner(), observerRolesDialogo);
     }
 
-    private void abrirDialogoUsuario(List<Rol> roles) {
+    private void showEditUserDialog(Usuario usuario) {
+        if (observerRolesDialogo != null) {
+            return;
+        }
+        observerRolesDialogo = lista -> {
+            dbHelper.observarRoles().removeObserver(observerRolesDialogo);
+            observerRolesDialogo = null;
+            abrirDialogoUsuario(usuario, lista != null ? lista : new ArrayList<>());
+        };
+        dbHelper.observarRoles().observe(getViewLifecycleOwner(), observerRolesDialogo);
+    }
+
+    private void abrirDialogoUsuario(@Nullable Usuario usuarioEditar, List<Rol> roles) {
         if (roles.isEmpty()) {
             Toast.makeText(requireContext(), R.string.msg_roles_requeridos, Toast.LENGTH_LONG).show();
             return;
         }
 
+        boolean esEdicion = usuarioEditar != null;
+
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_usuario, null);
         TextInputLayout tilUsername = dialogView.findViewById(R.id.tilUsername);
         EditText etUsername = dialogView.findViewById(R.id.etUsername);
         EditText etNombreCompleto = dialogView.findViewById(R.id.etNombreCompleto);
+        TextInputLayout tilPassword = dialogView.findViewById(R.id.tilPassword);
         EditText etPassword = dialogView.findViewById(R.id.etPassword);
         Spinner spinnerRoles = dialogView.findViewById(R.id.spinnerRoles);
         MaterialSwitch switchActivo = dialogView.findViewById(R.id.switchActivoDialog);
 
-        // CU-27: al reabrir el diálogo no debe quedar un error anterior.
+        if (esEdicion) {
+            etUsername.setText(usuarioEditar.getUsername());
+            etNombreCompleto.setText(usuarioEditar.getNombreCompleto());
+            tilPassword.setHint("Contraseña (dejar en blanco para no cambiar)");
+            switchActivo.setChecked(usuarioEditar.isActivo());
+        }
+
         tilUsername.setError(null);
-        // CU-27: el error del campo se limpia apenas el usuario reescribe.
         etUsername.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -143,19 +159,25 @@ public class UsuariosFragment extends Fragment {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
-            }
+            public void afterTextChanged(Editable s) {}
         });
 
         ArrayAdapter<Rol> spinnerAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, roles);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerRoles.setAdapter(spinnerAdapter);
 
+        if (esEdicion) {
+            for (int i = 0; i < roles.size(); i++) {
+                if (roles.get(i).getIdRol() == usuarioEditar.getIdRol()) {
+                    spinnerRoles.setSelection(i);
+                    break;
+                }
+            }
+        }
+
         AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.add_user)
+                .setTitle(esEdicion ? "Editar Usuario" : getString(R.string.add_user))
                 .setView(dialogView)
-                // El clic se maneja en setOnShowListener para poder mantener el
-                // diálogo abierto y mostrar el error dentro del campo.
                 .setPositiveButton(R.string.save, null)
                 .setNegativeButton(R.string.cancel, null)
                 .create();
@@ -167,7 +189,12 @@ public class UsuariosFragment extends Fragment {
             Rol selectedRol = (Rol) spinnerRoles.getSelectedItem();
             boolean activo = switchActivo.isChecked();
 
-            if (TextUtils.isEmpty(username) || TextUtils.isEmpty(nombreCompleto) || TextUtils.isEmpty(password)) {
+            if (TextUtils.isEmpty(username) || TextUtils.isEmpty(nombreCompleto)) {
+                Toast.makeText(requireContext(), R.string.msg_campos_obligatorios, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!esEdicion && TextUtils.isEmpty(password)) {
                 Toast.makeText(requireContext(), R.string.msg_campos_obligatorios, Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -177,24 +204,62 @@ public class UsuariosFragment extends Fragment {
                 return;
             }
 
-            if (dbHelper.isUsernameExists(username)) {
-                // CU-27: el nombre duplicado se informa en el campo, sin Toast.
+            if (!esEdicion && dbHelper.isUsernameExists(username)) {
                 tilUsername.setError(getString(R.string.error_username_duplicado));
                 etUsername.requestFocus();
                 return;
             }
 
-            Usuario nuevoUsuario = new Usuario(username, nombreCompleto, "", selectedRol.getIdRol(), activo ? 1 : 0);
-            long result = dbHelper.insertUsuario(nuevoUsuario, password);
-            if (result != -1) {
-                Toast.makeText(requireContext(), R.string.msg_usuario_registrado, Toast.LENGTH_SHORT).show();
-                loadUsuarios();
-                dialog.dismiss();
+            if (esEdicion && !username.equalsIgnoreCase(usuarioEditar.getUsername()) && dbHelper.isUsernameExists(username)) {
+                tilUsername.setError(getString(R.string.error_username_duplicado));
+                etUsername.requestFocus();
+                return;
+            }
+
+            if (esEdicion) {
+                usuarioEditar.setUsername(username);
+                usuarioEditar.setNombreCompleto(nombreCompleto);
+                usuarioEditar.setIdRol(selectedRol.getIdRol());
+                usuarioEditar.setActivo(activo ? 1 : 0);
+
+                boolean updated = dbHelper.updateUsuario(usuarioEditar, password);
+                if (updated) {
+                    Toast.makeText(requireContext(), "Usuario actualizado con éxito", Toast.LENGTH_SHORT).show();
+                    loadUsuarios();
+                    dialog.dismiss();
+                } else {
+                    Toast.makeText(requireContext(), "Error al actualizar el usuario", Toast.LENGTH_SHORT).show();
+                }
             } else {
-                Toast.makeText(requireContext(), R.string.msg_error_registrar_usuario, Toast.LENGTH_SHORT).show();
+                Usuario nuevoUsuario = new Usuario(username, nombreCompleto, "", selectedRol.getIdRol(), activo ? 1 : 0);
+                long result = dbHelper.insertUsuario(nuevoUsuario, password);
+                if (result != -1) {
+                    Toast.makeText(requireContext(), R.string.msg_usuario_registrado, Toast.LENGTH_SHORT).show();
+                    loadUsuarios();
+                    dialog.dismiss();
+                } else {
+                    Toast.makeText(requireContext(), R.string.msg_error_registrar_usuario, Toast.LENGTH_SHORT).show();
+                }
             }
         }));
 
         dialog.show();
+    }
+
+    private void confirmDeleteUser(Usuario usuario) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Eliminar Usuario")
+                .setMessage("¿Estás seguro de que deseas eliminar al usuario @" + usuario.getUsername() + "?")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    boolean deleted = dbHelper.deleteUsuario(usuario.getIdUsuario());
+                    if (deleted) {
+                        Toast.makeText(requireContext(), "Usuario eliminado con éxito", Toast.LENGTH_SHORT).show();
+                        loadUsuarios();
+                    } else {
+                        Toast.makeText(requireContext(), "Error al eliminar el usuario", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 }
