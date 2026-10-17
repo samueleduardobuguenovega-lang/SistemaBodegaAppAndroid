@@ -69,6 +69,8 @@ public class ProductoFormActivity extends AppCompatActivity {
     private TextInputEditText etPrecioCosto;
     private TextInputEditText etPrecioVenta;
     private TextInputEditText etStockMinimo;
+    private TextInputEditText etStockInicial;
+    private android.view.View tilStockInicial;
     private Spinner spinnerCategoria;
     private Spinner spinnerProveedor;
     private TextView tvStockActual;
@@ -104,6 +106,8 @@ public class ProductoFormActivity extends AppCompatActivity {
         etPrecioCosto = findViewById(R.id.etPrecioCosto);
         etPrecioVenta = findViewById(R.id.etPrecioVenta);
         etStockMinimo = findViewById(R.id.etStockMinimo);
+        etStockInicial = findViewById(R.id.etStockInicial);
+        tilStockInicial = findViewById(R.id.tilStockInicial);
         spinnerCategoria = findViewById(R.id.spinnerCategoria);
         spinnerProveedor = findViewById(R.id.spinnerProveedor);
         tvStockActual = findViewById(R.id.tvStockActual);
@@ -127,6 +131,9 @@ public class ProductoFormActivity extends AppCompatActivity {
             cargarProductoExistente();
             // RF-08: la baja lógica solo aplica a un producto ya guardado.
             crearBotonDeshabilitar();
+            // El stock actual no se edita (RF-07): se cambia con movimientos, y
+            // el valor vigente ya se muestra en tvStockActual.
+            tilStockInicial.setVisibility(View.GONE);
         } else {
             // Sin id todavía no hay historial que mostrar.
             layoutMovimientos.setVisibility(View.GONE);
@@ -303,7 +310,13 @@ public class ProductoFormActivity extends AppCompatActivity {
         double precioVenta = parseDecimal(texto(etPrecioVenta));
         int stockMinimo = parseEntero(texto(etStockMinimo));
 
-        if (precioCosto < 0 || precioVenta < 0 || stockMinimo < 0) {
+        // RF-03: el stock inicial se registra en el alta. El campo vacío vale
+        // cero; parseEntero() ya devuelve -1 si el texto no es un número.
+        String textoStockInicial = texto(etStockInicial);
+        int stockInicial = textoStockInicial.isEmpty() ? 0 : parseEntero(textoStockInicial);
+
+        if (precioCosto < 0 || precioVenta < 0 || stockMinimo < 0
+                || (idProducto <= 0 && stockInicial < 0)) {
             Toast.makeText(this, R.string.msg_valores_invalidos, Toast.LENGTH_SHORT).show();
             return;
         }
@@ -329,13 +342,13 @@ public class ProductoFormActivity extends AppCompatActivity {
                     stockMinimo, idCategoria, idProveedor);
         } else {
             guardarAlta(sku, nombre, texto(etDescripcion), precioCosto, precioVenta,
-                    stockMinimo, idCategoria, idProveedor);
+                    stockMinimo, stockInicial, idCategoria, idProveedor);
         }
     }
 
     private void guardarAlta(String skuParam, String nombre, String descripcion,
                              double precioCosto, double precioVenta, int stockMinimo,
-                             int idCategoria, int idProveedor) {
+                             int stockInicial, int idCategoria, int idProveedor) {
         String sku = skuParam;
         Producto nuevo = new Producto();
         nuevo.setSkuCodigo(sku);
@@ -343,9 +356,9 @@ public class ProductoFormActivity extends AppCompatActivity {
         nuevo.setDescripcion(descripcion);
         nuevo.setPrecioCosto(precioCosto);
         nuevo.setPrecioVenta(precioVenta);
-        // El stock inicial es cero: las existencias entran con movimientos,
-        // así el primer registro queda auditado en vez de aparecer de la nada.
-        nuevo.setStockActual(0);
+        // El producto nace en cero y el stock inicial entra como movimiento:
+        // así las existencias quedan auditadas en el historial en vez de
+        // aparecer como un número sin origen (RF-03).
         nuevo.setStockMinimo(stockMinimo);
         nuevo.setIdCategoria(idCategoria);
         nuevo.setIdProveedor(idProveedor);
@@ -363,6 +376,14 @@ public class ProductoFormActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.msg_sku_duplicado, Toast.LENGTH_LONG).show();
             return;
         }
+
+        if (stockInicial > 0) {
+            // El stock inicial se asienta como entrada auditada, igual que
+            // cualquier entrada posterior del producto.
+            productoDao.actualizarStock((int) resultado, stockInicial, TipoMovimiento.ENTRADA,
+                    sessionManager.getUsername(), idProveedor);
+        }
+
         Toast.makeText(this, R.string.msg_producto_guardado, Toast.LENGTH_SHORT).show();
         finish();
     }
