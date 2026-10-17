@@ -12,6 +12,8 @@ import com.android.sistemabodegaappandroid.model.Usuario;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import com.android.sistemabodegaappandroid.db.DatabaseHelper;
+import com.android.sistemabodegaappandroid.util.Permisos;
 
 public class SessionManager {
     private static final String PREF_NAME = "SistemaBodegaSession";
@@ -105,7 +107,26 @@ public class SessionManager {
      * @return true solo si el rol de la sesion es Administrador.
      */
     public boolean esAdministrador() {
-        return "Administrador".equalsIgnoreCase(getRoleName().trim());
+        return tienePermiso(Permisos.USUARIOS);
+    }
+
+    /**
+     * Indica si el rol del usuario en sesión tiene habilitado un módulo.
+     *
+     * Se consulta ROL.permisos en la base y no una copia en las preferencias:
+     * el administrador puede cambiar los permisos de un rol y el efecto debe
+     * notarse al abrir el módulo, sin volver a iniciar sesión. El id del rol sí
+     * se guarda en la sesión porque no cambia.
+     *
+     * @param permiso token de {@link Permisos}.
+     * @return true solo si hay sesión, el rol existe y declara ese permiso.
+     */
+    public boolean tienePermiso(String permiso) {
+        int idRol = pref.getInt(KEY_ROLE_ID, -1);
+        if (idRol <= 0) {
+            return false;
+        }
+        return Permisos.tiene(new DatabaseHelper(context).getPermisosDeRol(idRol), permiso);
     }
 
     public void logoutUser() {

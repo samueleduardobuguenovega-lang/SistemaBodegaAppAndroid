@@ -19,6 +19,7 @@ import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
+import com.android.sistemabodegaappandroid.util.Permisos;
 
 public class UserRoleAdminActivity extends AppCompatActivity {
 
@@ -31,7 +32,7 @@ public class UserRoleAdminActivity extends AppCompatActivity {
         // restaurarla o manipularla para que diga "Administrador", asi que el
         // rol se reconsulta en la base antes de mostrar u operar la pantalla.
         SessionManager session = new SessionManager(this);
-        if (!session.isLoggedIn() || !rolRealEsAdministrador(session.getUserId())) {
+        if (!session.isLoggedIn() || !rolRealPuedeAdministrarUsuarios(session.getUserId())) {
             Toast.makeText(this, R.string.msg_acceso_admin_denegado, Toast.LENGTH_LONG).show();
             startActivity(new Intent(this, MainActivity.class));
             finish();
@@ -84,20 +85,23 @@ public class UserRoleAdminActivity extends AppCompatActivity {
      *
      * La preferencia solo guarda una copia del rol del login: si fue
      * restaurada, manipulada o el usuario fue degradado/inactivo después,
-     * sigue diciendo "Administrador". La autoridad es la fila de USUARIO.
+     * sigue diciendo "Administrador". La autoridad es la fila de USUARIO y,
+     * para el acceso, el permiso USUARIOS de su rol (RF-27): el nombre del rol
+     * no autoriza, porque entonces un rol nuevo con el permiso marcado quedaría
+     * afuera y cualquiera llamado "Administrador" entraría.
      *
      * @param idUsuario id del usuario en sesión.
-     * @return true solo si el usuario existe, está activo y su rol es
-     *         Administrador según la base.
+     * @return true solo si el usuario existe, está activo y su rol declara el
+     *         permiso de administrar usuarios.
      */
-    private boolean rolRealEsAdministrador(int idUsuario) {
+    private boolean rolRealPuedeAdministrarUsuarios(int idUsuario) {
         if (idUsuario < 0) {
             return false;
         }
-        Usuario usuario = new DatabaseHelper(this).getUsuarioById(idUsuario);
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
+        Usuario usuario = dbHelper.getUsuarioById(idUsuario);
         return usuario != null
                 && usuario.isActivo()
-                && usuario.getNombreRol() != null
-                && "Administrador".equalsIgnoreCase(usuario.getNombreRol().trim());
+                && Permisos.tiene(dbHelper.getPermisosDeRol(usuario.getIdRol()), Permisos.USUARIOS);
     }
 }

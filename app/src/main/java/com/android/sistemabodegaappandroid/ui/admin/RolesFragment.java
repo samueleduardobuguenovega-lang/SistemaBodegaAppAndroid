@@ -25,6 +25,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.android.sistemabodegaappandroid.util.Permisos;
 
 public class RolesFragment extends Fragment {
 
@@ -113,11 +114,13 @@ public class RolesFragment extends Fragment {
             etNombreRol.setText(rolEditar.getNombreRol());
             etDescripcionRol.setText(rolEditar.getDescripcion());
             String p = rolEditar.getPermisos() != null ? rolEditar.getPermisos() : "";
-            cbUsuarios.setChecked(p.contains("USUARIOS"));
-            cbProductos.setChecked(p.contains("PRODUCTOS"));
-            cbCategorias.setChecked(p.contains("CATEGORIAS"));
-            cbProveedores.setChecked(p.contains("PROVEEDORES"));
-            cbMovimientos.setChecked(p.contains("MOVIMIENTOS"));
+            // Token completo: "contains" daría por marcado un permiso que solo
+            // aparece como parte de otro nombre.
+            cbUsuarios.setChecked(Permisos.tiene(p, Permisos.USUARIOS));
+            cbProductos.setChecked(Permisos.tiene(p, Permisos.PRODUCTOS));
+            cbCategorias.setChecked(Permisos.tiene(p, Permisos.CATEGORIAS));
+            cbProveedores.setChecked(Permisos.tiene(p, Permisos.PROVEEDORES));
+            cbMovimientos.setChecked(Permisos.tiene(p, Permisos.MOVIMIENTOS));
         } else {
             cbProductos.setChecked(true);
             cbCategorias.setChecked(true);

@@ -170,6 +170,45 @@ public class CasosDeUsoFaltantesTest {
         }
     }
 
+    // --- RF-27: los permisos del rol autorizan de verdad ---
+
+    /**
+     * La administración de usuarios y roles se decide por el permiso USUARIOS de
+     * ROL.permisos, no por el nombre del rol: comparar contra "Administrador"
+     * deja fuera a cualquier rol nuevo que sí tenga el permiso y deja entrar a
+     * cualquiera que se llame igual.
+     */
+    @Test
+    public void laAdministracionSeAutorizaPorPermisoYNoPorNombreDeRol() throws IOException {
+        String fuente = leer("UserRoleAdminActivity.java");
+        assertTrue("Debe evaluar el permiso USUARIOS con Permisos.tiene",
+                fuente.contains("Permisos.tiene"));
+        assertTrue("Debe consultar los permisos del rol en la base",
+                fuente.contains("getPermisosDeRol"));
+        assertFalse("No debe comparar contra el nombre literal del rol",
+                fuente.contains("\"Administrador\".equalsIgnoreCase"));
+    }
+
+    /** El panel no puede mostrar un módulo que el rol no tiene habilitado. */
+    @Test
+    public void elPanelEscondeLosModulosSinPermiso() throws IOException {
+        String fuente = leer("MainActivity.java");
+        assertTrue("El panel debe consultar los permisos de la sesión",
+                fuente.contains("tienePermiso"));
+        assertTrue("El acceso a usuarios y roles depende del permiso USUARIOS",
+                fuente.contains("Permisos.USUARIOS"));
+    }
+
+    /** Cada módulo revalida el permiso al abrirse: ocultar el botón no basta. */
+    @Test
+    public void losModulosRevalidanElPermisoAlAbrirse() throws IOException {
+        assertTrue("Productos exige el permiso PRODUCTOS",
+                leer("ProductosActivity.java").contains("AccesoModulo.permitido"));
+        assertTrue("Proveedores exige el permiso PROVEEDORES",
+                leer("ProveedoresActivity.java").contains("AccesoModulo.permitido"));
+        assertTrue("Categorías exige el permiso CATEGORIAS",
+                leer("CategoriasActivity.java").contains("AccesoModulo.permitido"));
+    }
     private String leer(String nombre) throws IOException {
         Path archivo = buscarArchivo(nombre);
         assertNotNull("Archivo no encontrado: " + nombre, archivo);

@@ -86,6 +86,7 @@
     <string name="hint_precio_costo">Precio de costo</string>
     <string name="hint_precio_venta">Precio de venta</string>
     <string name="hint_stock_minimo">Stock mínimo</string>
+    <string name="hint_stock_inicial">Stock inicial</string>
     <string name="hint_categoria">Categoría</string>
     <string name="hint_proveedor">Proveedor</string>
     <string name="section_movimientos">Movimientos de stock</string>
@@ -109,7 +110,7 @@
     <string name="msg_producto_guardado">Producto guardado correctamente</string>
     <string name="msg_sku_duplicado">El SKU ya existe</string>
     <string name="msg_nombre_sku_requerido">El nombre y el SKU no pueden estar vacíos</string>
-    <string name="msg_valores_invalidos">Los precios y el stock mínimo no pueden ser negativos</string>
+    <string name="msg_valores_invalidos">Los precios y el stock no pueden ser negativos</string>
     <string name="msg_categoria_requerida">Registre una categoría antes de crear productos</string>
     <string name="msg_producto_no_encontrado">El producto ya no está disponible</string>
     <string name="msg_producto_error">No se pudo guardar el producto</string>
@@ -155,4 +156,6 @@
     <!-- Guard de la administración: el rol se reconsulta en la base, la
          preferencia de sesión es solo copia y no autoriza. -->
     <string name="msg_acceso_admin_denegado">Su usuario no tiene permiso de Administrador para usar la administración de usuarios y roles</string>
+    <!-- Guard de los módulos: el rol solo abre lo que tiene habilitado. -->
+    <string name="msg_acceso_modulo_denegado">Su rol no tiene habilitado este módulo</string>
 </resources>

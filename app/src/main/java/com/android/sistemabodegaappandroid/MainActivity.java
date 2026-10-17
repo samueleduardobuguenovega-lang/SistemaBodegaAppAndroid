@@ -17,6 +17,7 @@ import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.android.sistemabodegaappandroid.ui.admin.UserRoleAdminActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.android.sistemabodegaappandroid.util.Permisos;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -66,14 +67,6 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // La gestion de usuarios y roles es exclusiva del Administrador. Un
-        // Operador no debe poder crear administradores aunque el boton exista.
-        if (sessionManager.esAdministrador()) {
-            btnAdminUsersRoles.setVisibility(View.VISIBLE);
-        } else {
-            btnAdminUsersRoles.setVisibility(View.GONE);
-        }
-
         btnAdminCategorias.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, CategoriasActivity.class);
             startActivity(intent);
@@ -84,7 +77,20 @@ public class MainActivity extends AppCompatActivity {
         // porque solo usuarios y roles exigen ser administrador.
         crearBotonesInventario();
 
+        // RF-27: el rol decide qué accesos ve el panel. Se aplica acá y no al
+        // crear cada botón porque crearBotonesInventario() construye dos de los
+        // cuatro en código.
+        mostrarSegunPermiso(btnAdminUsersRoles, Permisos.USUARIOS);
+        mostrarSegunPermiso(btnAdminCategorias, Permisos.CATEGORIAS);
+        mostrarSegunPermiso(btnAdminProductos, Permisos.PRODUCTOS);
+        mostrarSegunPermiso(btnAdminProveedores, Permisos.PROVEEDORES);
+
         btnLogout.setOnClickListener(v -> mostrarDialogoCerrarSesion());
+    }
+
+    /** Muestra u oculta un acceso del panel según los permisos del rol. */
+    private void mostrarSegunPermiso(View vista, String permiso) {
+        vista.setVisibility(sessionManager.tienePermiso(permiso) ? View.VISIBLE : View.GONE);
     }
 
     /**

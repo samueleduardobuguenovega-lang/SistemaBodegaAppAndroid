@@ -132,16 +132,30 @@ public class NavegacionInventarioTest {
                 main.contains("ProveedoresActivity"));
     }
 
-    /** El guard de administrador solo puede cubrir usuarios y roles. */
+    /**
+     * El guard de usuarios y roles no puede cubrir el inventario.
+     *
+     * Antes el panel preguntaba por el rol Administrador y mostraba el
+     * inventario a todos; ahora cada acceso depende de su propio permiso
+     * (RF-27), así que la comprobación pasa por el permiso de cada botón y no
+     * por el nombre del rol.
+     */
     @Test
     public void losAccesosDeInventarioNoEstanDetrasDelGuardDeAdmin() throws IOException {
         String main = leer(buscarArchivo("MainActivity.java"));
-        int guard = main.indexOf("esAdministrador()");
-        int inventario = main.indexOf("crearBotonesInventario()");
-        assertTrue("MainActivity debe mantener el guard de administrador", guard > 0);
-        assertTrue("Los accesos de inventario deben existir", inventario > 0);
-        assertTrue("El guard de administrador no debe ocultar el inventario",
-                inventario > guard);
+
+        assertTrue("El panel ya no debe decidir por el nombre del rol",
+                main.indexOf("esAdministrador()") < 0);
+        assertTrue("Usuarios y roles dependen del permiso USUARIOS",
+                main.contains("mostrarSegunPermiso(btnAdminUsersRoles, Permisos.USUARIOS)"));
+        assertTrue("Productos depende de su propio permiso",
+                main.contains("mostrarSegunPermiso(btnAdminProductos, Permisos.PRODUCTOS)"));
+        assertTrue("Proveedores depende de su propio permiso",
+                main.contains("mostrarSegunPermiso(btnAdminProveedores, Permisos.PROVEEDORES)"));
+        assertTrue("Categorías depende de su propio permiso",
+                main.contains("mostrarSegunPermiso(btnAdminCategorias, Permisos.CATEGORIAS)"));
+        assertTrue("Los accesos de inventario deben seguir existiendo",
+                main.contains("crearBotonesInventario()"));
     }
 
     /** Localiza un archivo por nombre recorriendo el árbol del módulo. */

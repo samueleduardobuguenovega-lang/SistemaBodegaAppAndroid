@@ -20,6 +20,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.Collections;
+import com.android.sistemabodegaappandroid.util.AccesoModulo;
+import com.android.sistemabodegaappandroid.util.Permisos;
 
 /**
  * Listado de productos con búsqueda por nombre o SKU (CU-11 / RF-04 y RF-05).
@@ -39,6 +41,14 @@ public class ProductosActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // RF-27: el módulo solo se abre si el rol tiene el permiso. Ocultar el
+        // botón en el panel no alcanza: la actividad también puede abrirse con
+        // un intent directo o quedar en una tarea restaurada.
+        if (!AccesoModulo.permitido(this, Permisos.PRODUCTOS)) {
+            return;
+        }
+
         setContentView(R.layout.activity_productos);
 
         // El notch y las barras del sistema no deben tapar el contenido.

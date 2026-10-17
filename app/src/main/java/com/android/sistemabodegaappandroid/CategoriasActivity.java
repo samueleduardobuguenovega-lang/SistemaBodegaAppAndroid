@@ -20,6 +20,8 @@ import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputEditText;
+import com.android.sistemabodegaappandroid.util.AccesoModulo;
+import com.android.sistemabodegaappandroid.util.Permisos;
 
 public class CategoriasActivity extends AppCompatActivity {
 
@@ -32,6 +34,14 @@ public class CategoriasActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // RF-27: el módulo solo se abre si el rol tiene el permiso. Ocultar el
+        // botón en el panel no alcanza: la actividad también puede abrirse con
+        // un intent directo o quedar en una tarea restaurada.
+        if (!AccesoModulo.permitido(this, Permisos.CATEGORIAS)) {
+            return;
+        }
+
         setContentView(R.layout.activity_categorias);
 
         // El notch y las barras del sistema no deben tapar el contenido.

@@ -336,6 +336,33 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * Permisos declarados por un rol, tal cual están guardados en ROL.permisos.
+     *
+     * Es la autoridad para decidir el acceso a los módulos (RF-27). La columna
+     * se guarda desde los casilleros del diálogo de roles y hasta ahora ninguna
+     * clase la consultaba: el único control comparaba el nombre del rol.
+     *
+     * @param idRol identificador del rol; los valores <= 0 no existen.
+     * @return la lista "PERMISO,PERMISO"; cadena vacía si el rol no existe o no
+     *         tiene permisos declarados.
+     */
+    public String getPermisosDeRol(int idRol) {
+        if (idRol <= 0) {
+            return "";
+        }
+        String sql = "SELECT " + COLUMN_ROL_PERMISOS + " FROM " + TABLE_ROL
+                + " WHERE " + COLUMN_ROL_ID + " = ?";
+        try (Cursor cursor = getReadableDatabase().rawQuery(
+                sql, new String[]{String.valueOf(idRol)})) {
+            if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                String permisos = cursor.getString(0);
+                return permisos != null ? permisos : "";
+            }
+        }
+        return "";
+    }
+
+    /**
      * Consulta parametrizada compartida: la columna es siempre una constante
      * interna y el valor viaja como argumento de `?`, sin concatenar SQL.
      */
