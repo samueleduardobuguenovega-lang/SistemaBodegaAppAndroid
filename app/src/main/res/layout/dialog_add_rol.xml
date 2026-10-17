@@ -37,4 +37,44 @@
             android:maxLines="3" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Permisos del Rol"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+        android:textColor="@color/text_secondary"
+        android:textStyle="bold" />
+
+    <CheckBox
+        android:id="@+id/cbPermisoUsuarios"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Gestionar Usuarios y Roles" />
+
+    <CheckBox
+        android:id="@+id/cbPermisoProductos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Crear y Editar Productos" />
+
+    <CheckBox
+        android:id="@+id/cbPermisoCategorias"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Gestionar Categorías" />
+
+    <CheckBox
+        android:id="@+id/cbPermisoProveedores"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Gestionar Proveedores" />
+
+    <CheckBox
+        android:id="@+id/cbPermisoMovimientos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Registrar Movimientos de Stock" />
+
 </LinearLayout>

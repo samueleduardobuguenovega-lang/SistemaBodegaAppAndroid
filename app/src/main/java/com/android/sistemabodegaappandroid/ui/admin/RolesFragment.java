@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -51,14 +52,21 @@ public class RolesFragment extends Fragment {
         fabAddRole = view.findViewById(R.id.fabAddRole);
 
         rvRoles.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new RolAdapter(rolesList);
+        adapter = new RolAdapter(rolesList, new RolAdapter.OnRolActionListener() {
+            @Override
+            public void onEdit(Rol rol) {
+                showEditRoleDialog(rol);
+            }
+
+            @Override
+            public void onDelete(Rol rol) {
+                confirmDeleteRole(rol);
+            }
+        });
         rvRoles.setAdapter(adapter);
 
         fabAddRole.setOnClickListener(v -> showAddRoleDialog());
 
-        // RF-27: el listado es reactivo; el DAO publica y la interfaz se
-        // suscribe, igual que en UsuariosFragment. Cada actualización llega
-        // al hilo principal.
         dbHelper.observarRoles().observe(getViewLifecycleOwner(), lista -> {
             if (lista == null) {
                 return;
@@ -77,18 +85,46 @@ public class RolesFragment extends Fragment {
         loadRoles();
     }
 
-    /** Refresca el listado reactiva el DAO (el observer repinta la vista). */
     public void loadRoles() {
         dbHelper.refrescarRoles();
     }
 
     private void showAddRoleDialog() {
+        abrirDialogoRol(null);
+    }
+
+    private void showEditRoleDialog(Rol rol) {
+        abrirDialogoRol(rol);
+    }
+
+    private void abrirDialogoRol(@Nullable Rol rolEditar) {
+        boolean esEdicion = rolEditar != null;
+
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_rol, null);
         EditText etNombreRol = dialogView.findViewById(R.id.etNombreRol);
         EditText etDescripcionRol = dialogView.findViewById(R.id.etDescripcionRol);
+        CheckBox cbUsuarios = dialogView.findViewById(R.id.cbPermisoUsuarios);
+        CheckBox cbProductos = dialogView.findViewById(R.id.cbPermisoProductos);
+        CheckBox cbCategorias = dialogView.findViewById(R.id.cbPermisoCategorias);
+        CheckBox cbProveedores = dialogView.findViewById(R.id.cbPermisoProveedores);
+        CheckBox cbMovimientos = dialogView.findViewById(R.id.cbPermisoMovimientos);
+
+        if (esEdicion) {
+            etNombreRol.setText(rolEditar.getNombreRol());
+            etDescripcionRol.setText(rolEditar.getDescripcion());
+            String p = rolEditar.getPermisos() != null ? rolEditar.getPermisos() : "";
+            cbUsuarios.setChecked(p.contains("USUARIOS"));
+            cbProductos.setChecked(p.contains("PRODUCTOS"));
+            cbCategorias.setChecked(p.contains("CATEGORIAS"));
+            cbProveedores.setChecked(p.contains("PROVEEDORES"));
+            cbMovimientos.setChecked(p.contains("MOVIMIENTOS"));
+        } else {
+            cbProductos.setChecked(true);
+            cbCategorias.setChecked(true);
+        }
 
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.add_role)
+                .setTitle(esEdicion ? "Editar Rol" : getString(R.string.add_role))
                 .setView(dialogView)
                 .setPositiveButton(R.string.save, (dialog, which) -> {
                     String nombreRol = etNombreRol.getText() != null ? etNombreRol.getText().toString().trim() : "";
@@ -99,18 +135,61 @@ public class RolesFragment extends Fragment {
                         return;
                     }
 
-                    if (dbHelper.isRoleNameExists(nombreRol)) {
+                    if (!esEdicion && dbHelper.isRoleNameExists(nombreRol)) {
                         Toast.makeText(requireContext(), "El nombre del rol ya existe (debe ser único)", Toast.LENGTH_LONG).show();
                         return;
                     }
 
-                    Rol nuevoRol = new Rol(nombreRol, descripcion);
-                    long result = dbHelper.insertRol(nuevoRol);
-                    if (result != -1) {
-                        Toast.makeText(requireContext(), "Rol registrado con éxito", Toast.LENGTH_SHORT).show();
+                    if (esEdicion && !nombreRol.equalsIgnoreCase(rolEditar.getNombreRol()) && dbHelper.isRoleNameExists(nombreRol)) {
+                        Toast.makeText(requireContext(), "El nombre del rol ya existe (debe ser único)", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    List<String> perms = new ArrayList<>();
+                    if (cbUsuarios.isChecked()) perms.add("USUARIOS");
+                    if (cbProductos.isChecked()) perms.add("PRODUCTOS");
+                    if (cbCategorias.isChecked()) perms.add("CATEGORIAS");
+                    if (cbProveedores.isChecked()) perms.add("PROVEEDORES");
+                    if (cbMovimientos.isChecked()) perms.add("MOVIMIENTOS");
+                    String permisosStr = TextUtils.join(",", perms);
+
+                    if (esEdicion) {
+                        rolEditar.setNombreRol(nombreRol);
+                        rolEditar.setDescripcion(descripcion);
+                        rolEditar.setPermisos(permisosStr);
+                        boolean updated = dbHelper.updateRol(rolEditar);
+                        if (updated) {
+                            Toast.makeText(requireContext(), "Rol actualizado con éxito", Toast.LENGTH_SHORT).show();
+                            loadRoles();
+                        } else {
+                            Toast.makeText(requireContext(), "Error al actualizar el rol", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Rol nuevoRol = new Rol(nombreRol, descripcion, permisosStr);
+                        long result = dbHelper.insertRol(nuevoRol);
+                        if (result != -1) {
+                            Toast.makeText(requireContext(), "Rol registrado con éxito", Toast.LENGTH_SHORT).show();
+                            loadRoles();
+                        } else {
+                            Toast.makeText(requireContext(), "Error al registrar el rol", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void confirmDeleteRole(Rol rol) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Eliminar Rol")
+                .setMessage("¿Estás seguro de que deseas eliminar el rol \"" + rol.getNombreRol() + "\"?")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    boolean deleted = dbHelper.deleteRol(rol.getIdRol());
+                    if (deleted) {
+                        Toast.makeText(requireContext(), "Rol eliminado con éxito", Toast.LENGTH_SHORT).show();
                         loadRoles();
                     } else {
-                        Toast.makeText(requireContext(), "Error al registrar el rol", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), "No se puede eliminar el rol porque está asignado a uno o más usuarios", Toast.LENGTH_LONG).show();
                     }
                 })
                 .setNegativeButton(R.string.cancel, null)
