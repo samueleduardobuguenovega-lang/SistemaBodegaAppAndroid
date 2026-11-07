@@ -3,7 +3,10 @@ package com.android.sistemabodegaappandroid;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -71,6 +74,57 @@ public class LoginActivity extends AppCompatActivity {
         indicadorProgreso = findViewById(R.id.progressLogin);
 
         btnLogin.setOnClickListener(v -> intentarIniciarSesion());
+        aplicarFeedbackTactil(btnLogin);
+        animarEntradaFormulario();
+    }
+
+    /**
+     * Entrada escalonada del logo y del formulario: cada bloque aparece subiendo
+     * unos píxeles, con ~40 ms de desfase, en vez de aparecer todo de golpe.
+     * Mismo patrón que animarEntradaFormulario() de ProductoFormActivity.
+     */
+    private void animarEntradaFormulario() {
+        View[] bloques = {
+                findViewById(R.id.ivLogo),
+                findViewById(R.id.tvAppTitle),
+                findViewById(R.id.tvAppSubtitle),
+                findViewById(R.id.tilUsername),
+                findViewById(R.id.tilPassword),
+                findViewById(R.id.btnLogin),
+                findViewById(R.id.cardNotice)
+        };
+        long desfase = 0L;
+        for (View bloque : bloques) {
+            if (bloque == null) {
+                continue;
+            }
+            bloque.setAlpha(0f);
+            bloque.setTranslationY(28f);
+            bloque.animate().alpha(1f).translationY(0f)
+                    .setStartDelay(desfase)
+                    .setDuration(260)
+                    .setInterpolator(new DecelerateInterpolator(1.4f))
+                    .start();
+            desfase += 40L;
+        }
+    }
+
+    /**
+     * Feedback táctil expresivo, igual al del listado de productos: el botón se
+     * encoge levemente al presionar y vuelve con rebote al soltar. Devuelve
+     * false para no consumir el toque: el clic sigue llegando al listener.
+     */
+    private void aplicarFeedbackTactil(View vista) {
+        vista.setOnTouchListener((v, evento) -> {
+            int accion = evento.getActionMasked();
+            if (accion == MotionEvent.ACTION_DOWN) {
+                v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(80).start();
+            } else if (accion == MotionEvent.ACTION_UP || accion == MotionEvent.ACTION_CANCEL) {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(180)
+                        .setInterpolator(new OvershootInterpolator(1.6f)).start();
+            }
+            return false;
+        });
     }
 
     private void intentarIniciarSesion() {

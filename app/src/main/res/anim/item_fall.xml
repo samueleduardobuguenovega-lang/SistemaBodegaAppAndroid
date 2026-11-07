@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Entrada suave de cada tarjeta del catálogo: sube y aparece. El
+     RecyclerView del listado la programa con desfasaje para efecto escalonado. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="220"
+    android:interpolator="@android:anim/decelerate_interpolator">
+    <alpha
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0"/>
+    <translate
+        android:fromYDelta="24dp"
+        android:toYDelta="0dp"/>
+</set>

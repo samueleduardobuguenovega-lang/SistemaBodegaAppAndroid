@@ -1,25 +1,28 @@
 package com.android.sistemabodegaappandroid;
 
 import android.content.Intent;
-import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.LinearLayout;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 
 import com.android.sistemabodegaappandroid.session.SessionManager;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
+import com.android.sistemabodegaappandroid.util.Permisos;
 import com.android.sistemabodegaappandroid.ui.admin.UserRoleAdminActivity;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.android.sistemabodegaappandroid.util.Permisos;
 
 public class MainActivity extends AppCompatActivity {
+
+    /** Desfase entre tarjetas en la entrada escalonada del panel. */
+    private static final long DESFASE_TARJETAS_MS = 60L;
 
     private SessionManager sessionManager;
 
@@ -27,10 +30,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvUserFullName;
     private TextView tvUsername;
     private TextView tvUserRole;
-    private MaterialButton btnAdminUsersRoles;
-    private MaterialButton btnAdminCategorias;
-    private MaterialButton btnAdminProductos;
-    private MaterialButton btnAdminProveedores;
+    private MaterialCardView btnAdminUsersRoles;
+    private MaterialCardView btnAdminCategorias;
+    private MaterialCardView btnAdminProductos;
+    private MaterialCardView btnAdminProveedores;
     private MaterialButton btnLogout;
 
     @Override
@@ -58,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
         tvUserRole = findViewById(R.id.tvUserRole);
         btnAdminUsersRoles = findViewById(R.id.btnAdminUsersRoles);
         btnAdminCategorias = findViewById(R.id.btnAdminCategorias);
+        btnAdminProductos = findViewById(R.id.btnAdminProductos);
+        btnAdminProveedores = findViewById(R.id.btnAdminProveedores);
         btnLogout = findViewById(R.id.btnLogout);
 
         cargarDatosSesion();
@@ -72,20 +77,27 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Los accesos de inventario se construyen en código, con el mismo aspecto
-        // que btnAdminCategorias. Su visibilidad la fija mostrarSegunPermiso unas
-        // líneas más abajo, con el permiso de cada módulo.
+        // Los accesos de inventario ya son tarjetas del layout; acá se conectan
+        // con su pantalla igual que los dos accesos anteriores.
         crearBotonesInventario();
 
-        // RF-27: el rol decide qué accesos ve el panel. Se aplica acá y no al
-        // crear cada botón porque crearBotonesInventario() construye dos de los
-        // cuatro en código.
+        // RF-27: el rol decide qué accesos ve el panel. Se aplica sobre las
+        // cuatro tarjetas, sin importar si vinieron del layout o se conectaron
+        // en código.
         mostrarSegunPermiso(btnAdminUsersRoles, Permisos.USUARIOS);
         mostrarSegunPermiso(btnAdminCategorias, Permisos.CATEGORIAS);
         mostrarSegunPermiso(btnAdminProductos, Permisos.PRODUCTOS);
         mostrarSegunPermiso(btnAdminProveedores, Permisos.PROVEEDORES);
 
         btnLogout.setOnClickListener(v -> mostrarDialogoCerrarSesion());
+
+        // Primero se resuelve la visibilidad por permiso y después se anima: así
+        // la entrada escalonada no gasta desfase en tarjetas que el rol no ve.
+        aplicarFeedbackTactil(btnAdminUsersRoles);
+        aplicarFeedbackTactil(btnAdminCategorias);
+        aplicarFeedbackTactil(btnAdminProductos);
+        aplicarFeedbackTactil(btnAdminProveedores);
+        animarEntradaTarjetas();
     }
 
     /** Muestra u oculta un acceso del panel según los permisos del rol. */
@@ -93,42 +105,58 @@ public class MainActivity extends AppCompatActivity {
         vista.setVisibility(sessionManager.tienePermiso(permiso) ? View.VISIBLE : View.GONE);
     }
 
-    /**
-     * Inserta los accesos de productos y proveedores justo debajo de
-     * categorías, conservando el orden de los botones del panel.
-     */
+    /** Conecta las tarjetas de productos y proveedores con su pantalla. */
     private void crearBotonesInventario() {
-        ViewGroup contenedor = (ViewGroup) btnAdminCategorias.getParent();
-        int posicion = contenedor.indexOfChild(btnAdminCategorias) + 1;
-
-        btnAdminProductos = crearBotonInventario(R.id.btnAdminProductos, R.string.btn_admin_productos);
-        contenedor.addView(btnAdminProductos, posicion);
-
-        btnAdminProveedores = crearBotonInventario(R.id.btnAdminProveedores, R.string.btn_admin_proveedores);
-        contenedor.addView(btnAdminProveedores, posicion + 1);
-
         btnAdminProductos.setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, ProductosActivity.class)));
         btnAdminProveedores.setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, ProveedoresActivity.class)));
     }
 
-    /** Réplica en código de los atributos del botón de categorías. */
-    private MaterialButton crearBotonInventario(int idRecurso, int textoRecurso) {
-        MaterialButton boton = new MaterialButton(this);
-        boton.setId(idRecurso);
-        boton.setText(textoRecurso);
-        boton.setTextSize(15);
-        boton.setTextColor(ContextCompat.getColor(this, R.color.white));
-        boton.setBackgroundTintList(
-                ColorStateList.valueOf(ContextCompat.getColor(this, R.color.primary)));
-        boton.setCornerRadius(dpApx(8));
+    /**
+     * Entrada escalonada de las tarjetas de menú: cada una sube 24dp mientras
+     * aparece, con 60 ms de desfase entre tarjetas. Solo se animan las que el
+     * rol ve; las ocultas no consumen turno.
+     */
+    private void animarEntradaTarjetas() {
+        MaterialCardView[] tarjetas = {
+                btnAdminUsersRoles,
+                btnAdminCategorias,
+                btnAdminProductos,
+                btnAdminProveedores
+        };
+        long desfase = 0L;
+        for (MaterialCardView tarjeta : tarjetas) {
+            if (tarjeta == null || tarjeta.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            tarjeta.setAlpha(0f);
+            tarjeta.setTranslationY(dpApx(24));
+            tarjeta.animate().alpha(1f).translationY(0f)
+                    .setStartDelay(desfase)
+                    .setDuration(280)
+                    .setInterpolator(new DecelerateInterpolator(1.4f))
+                    .start();
+            desfase += DESFASE_TARJETAS_MS;
+        }
+    }
 
-        LinearLayout.LayoutParams parametros = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dpApx(60));
-        parametros.bottomMargin = dpApx(12);
-        boton.setLayoutParams(parametros);
-        return boton;
+    /**
+     * Feedback táctil expresivo, igual al del listado de productos: la tarjeta
+     * se encoge levemente al presionar y vuelve con rebote al soltar. Devuelve
+     * false para no consumir el toque: el clic sigue llegando al listener.
+     */
+    private void aplicarFeedbackTactil(View vista) {
+        vista.setOnTouchListener((v, evento) -> {
+            int accion = evento.getActionMasked();
+            if (accion == MotionEvent.ACTION_DOWN) {
+                v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(80).start();
+            } else if (accion == MotionEvent.ACTION_UP || accion == MotionEvent.ACTION_CANCEL) {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(180)
+                        .setInterpolator(new OvershootInterpolator(1.6f)).start();
+            }
+            return false;
+        });
     }
 
     /** Convierte dp a píxeles con la densidad real del dispositivo. */

@@ -14,4 +14,8 @@
     <color name="text_secondary">#5F6368</color>
     <color name="text_placeholder">#9AA0A6</color>
     <color name="outline">#C4CBD4</color>
+
+    <!-- Estados de inventario del listado de productos (semáforo de stock) -->
+    <color name="stock_ok">#2E7D32</color>
+    <color name="stock_critico">#C62828</color>
 </resources>

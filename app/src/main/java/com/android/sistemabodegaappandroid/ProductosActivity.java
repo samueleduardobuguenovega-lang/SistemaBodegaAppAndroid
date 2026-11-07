@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.animation.AnimationUtils;
+import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -19,7 +21,6 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.util.Collections;
 import com.android.sistemabodegaappandroid.util.AccesoModulo;
 import com.android.sistemabodegaappandroid.util.Permisos;
 
@@ -36,6 +37,7 @@ public class ProductosActivity extends AppCompatActivity {
     private ProductoAdapter adapter;
     private RecyclerView rvProductos;
     private TextView tvVacioProductos;
+    private TextView tvHeroConteo;
     private ImageView ivVacioProductos;
 
     @Override
@@ -57,6 +59,7 @@ public class ProductosActivity extends AppCompatActivity {
         dbHelper = new DatabaseHelper(this);
         rvProductos = findViewById(R.id.rvProductos);
         tvVacioProductos = findViewById(R.id.tvVacioProductos);
+        tvHeroConteo = findViewById(R.id.tvHeroConteo);
         ivVacioProductos = findViewById(R.id.ivVacioProductos);
         TextInputEditText etBuscar = findViewById(R.id.etBuscarProducto);
         MaterialToolbar toolbar = findViewById(R.id.toolbarProductos);
@@ -67,13 +70,18 @@ public class ProductosActivity extends AppCompatActivity {
             toolbar.setNavigationOnClickListener(v -> finish());
         }
 
-        adapter = new ProductoAdapter(Collections.emptyList(), producto -> {
+        adapter = new ProductoAdapter(producto -> {
             Intent intent = new Intent(ProductosActivity.this, ProductoFormActivity.class);
             intent.putExtra(ProductoFormActivity.EXTRA_ID_PRODUCTO, producto.getIdProducto());
-            startActivity(intent);
+            abrirFormulario(intent);
         });
         rvProductos.setLayoutManager(new LinearLayoutManager(this));
         rvProductos.setAdapter(adapter);
+        // Entrada escalonada: cada tarjeta sube y aparece con ~70 ms de
+        // desfase respecto a la anterior. Se reprograda cada vez que cambia
+        // el dataset visible para que la animación no solo luzca al abrir.
+        rvProductos.setLayoutAnimation(new LayoutAnimationController(
+                AnimationUtils.loadAnimation(this, R.anim.item_fall), 0.07f));
 
         // RF-04/RF-05: la lista observa el LiveData del helper. Cada actualización
         // llega ya resuelta al hilo principal, con el filtro de nombre o SKU aplicado.
@@ -82,6 +90,7 @@ public class ProductosActivity extends AppCompatActivity {
                 return;
             }
             adapter.updateData(productos);
+            tvHeroConteo.setText(getString(R.string.label_total_productos, productos.size()));
             boolean vacio = productos.isEmpty();
             tvVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
             ivVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
@@ -106,7 +115,19 @@ public class ProductosActivity extends AppCompatActivity {
         });
 
         fabAgregar.setOnClickListener(v ->
-                startActivity(new Intent(this, ProductoFormActivity.class)));
+                abrirFormulario(new Intent(this, ProductoFormActivity.class)));
+    }
+
+    /** Transición fluida al abrir el formulario (slide, estilo Expressive). */
+    private void abrirFormulario(Intent intent) {
+        startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
     @Override

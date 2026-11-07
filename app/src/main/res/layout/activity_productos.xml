@@ -23,6 +23,48 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
+    <LinearLayout
+        android:id="@+id/heroProductos"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_hero"
+        android:padding="20dp"
+        app:layout_constraintTop_toBottomOf="@id/toolbarProductos"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvHeroTitulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/hero_titulo"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"/>
+
+        <TextView
+            android:id="@+id/tvHeroConteo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/primary_container"
+            android:textSize="14sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/tvHeroCaption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/hero_caption"
+            android:textColor="@color/surface"
+            android:textSize="13sp"
+            android:alpha="0.85"/>
+    </LinearLayout>
+
     <TextView
         android:id="@+id/tvSubtituloProductos"
         android:layout_width="0dp"
@@ -32,7 +74,7 @@
         android:text="@string/subtitle_productos"
         android:textSize="14sp"
         android:textColor="@color/text_secondary"
-        app:layout_constraintTop_toBottomOf="@id/toolbarProductos"
+        app:layout_constraintTop_toBottomOf="@id/heroProductos"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 

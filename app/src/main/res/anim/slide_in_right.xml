@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Entrada al avanzar: la pantalla nueva llega desde la derecha. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="260"
+    android:interpolator="@android:anim/decelerate_interpolator">
+    <translate
+        android:fromXDelta="24%"
+        android:toXDelta="0"/>
+    <alpha android:fromAlpha="0.0" android:toAlpha="1.0"/>
+</set>

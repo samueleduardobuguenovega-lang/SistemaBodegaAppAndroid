@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Identificador de Bodega Express: bodega plana monocroma con puerta y flecha
+     de carga. Se dibuja con un solo relleno (negro) para que la pantalla lo
+     tiña con app:tint y el logo quede siempre dentro del sistema de color del
+     proyecto: si cambia el color primario, el logo lo sigue sin editarse. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Techo a dos aguas -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,2L1,9.5h22z" />
+
+    <!-- Cuerpo de la bodega con dos huecos: la puerta a la derecha y la flecha
+         de carga (entrada de mercadería) a la izquierda. fillType evenOdd hace
+         que los recortes se vean como transparentes sobre el relleno. -->
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M3,10.5h18v10.5H3zM13.5,13h5v8h-5zM9,17.5v-2.5H7.5L10,12l2.5,3h-1.5v2.5z" />
+</vector>

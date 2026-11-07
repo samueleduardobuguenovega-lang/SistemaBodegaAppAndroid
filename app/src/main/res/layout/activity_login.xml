@@ -14,15 +14,16 @@
         android:layout_height="wrap_content"
         android:padding="24dp">
 
+        <!-- Logo monocromo (caja con puerta y marca de carga) que la pantalla
+             tiñe con el color primario: no se duplica el color en el vector. -->
         <ImageView
             android:id="@+id/ivLogo"
-            android:layout_width="96dp"
-            android:layout_height="96dp"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
             android:layout_marginTop="48dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/ic_launcher_foreground"
-            android:background="@color/primary_container"
-            android:padding="8dp"
+            android:src="@drawable/ic_logo_bodega"
+            app:tint="@color/primary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -32,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/app_name"
+            android:text="@string/login_titulo"
             android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
             android:textStyle="bold"
             android:textColor="@color/primary"
@@ -42,10 +43,11 @@
 
         <TextView
             android:id="@+id/tvAppSubtitle"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/subtitle_login"
+            android:gravity="center"
+            android:text="@string/login_subtitulo"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
             android:textColor="@color/text_secondary"
             app:layout_constraintEnd_toEndOf="parent"
@@ -60,6 +62,8 @@
             android:layout_marginTop="32dp"
             android:hint="@string/hint_username"
             app:boxStrokeColor="@color/primary"
+            app:helperText="@string/login_ayuda_usuario"
+            app:helperTextTextColor="@color/text_secondary"
             app:hintTextColor="@color/primary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -82,8 +86,10 @@
             android:layout_marginTop="16dp"
             android:hint="@string/hint_password"
             app:boxStrokeColor="@color/primary"
-            app:hintTextColor="@color/primary"
             app:endIconMode="password_toggle"
+            app:helperText="@string/login_ayuda_password"
+            app:helperTextTextColor="@color/text_secondary"
+            app:hintTextColor="@color/primary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tilUsername">
@@ -148,7 +154,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:text="@string/default_credentials_notice"
+                    android:text="@string/login_ayuda_demo"
                     android:textAppearance="@style/TextAppearance.Material3.BodySmall"
                     android:textColor="@color/text_secondary" />
             </LinearLayout>

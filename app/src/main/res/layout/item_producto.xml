@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fila de producto. El stock en naranja y la etiqueta "Stock bajo" son la
-     señal de inventario: indican que la existencia llegó al mínimo. -->
+<!-- Tarjeta de producto del catálogo (RF-04).
+     Jerarquía en dos pisos: arriba identidad (nombre a la izquierda, precio a
+     la derecha), abajo la píldora de stock con semáforo. La píldora se colorea
+     en el adaptador por backgroundTint: verde disponible, ámbar stock bajo,
+     rojo sin stock. -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -8,33 +11,56 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="16dp"
     android:layout_marginVertical="6dp"
-    app:cardElevation="0dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardElevation="2dp"
     app:cardCornerRadius="16dp"
+    app:rippleColor="@color/primary_container"
     app:strokeColor="@color/outline"
-    app:strokeWidth="1dp"
+    app:strokeWidth="0dp"
     app:cardBackgroundColor="@color/surface">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
 
-        <TextView
-            android:id="@+id/tvNombreProducto"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="@color/primary"
-            android:maxLines="2"
-            android:ellipsize="end"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvNombreProducto"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:maxLines="2"
+                android:ellipsize="end"/>
+
+            <TextView
+                android:id="@+id/tvPrecioProducto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary"/>
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tvSkuProducto"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="3dp"
             android:textSize="13sp"
             android:textColor="@color/text_secondary"/>
 
@@ -62,36 +88,27 @@
             android:gravity="center_vertical">
 
             <TextView
-                android:id="@+id/tvPrecioProducto"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"/>
-
-            <TextView
-                android:id="@+id/tvStockBajo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:background="@color/accent"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="3dp"
-                android:text="@string/stock_bajo"
-                android:visibility="gone"/>
-
-            <TextView
                 android:id="@+id/tvStockProducto"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:textSize="15sp"
+                android:background="@drawable/bg_pill"
+                android:backgroundTint="@color/stock_ok"
+                android:textColor="@color/white"
+                android:textSize="12sp"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"/>
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"/>
+
+            <TextView
+                android:id="@+id/tvStockBajo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/accent"
+                android:visibility="gone"/>
         </LinearLayout>
 
     </LinearLayout>
