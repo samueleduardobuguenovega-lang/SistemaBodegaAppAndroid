@@ -10,6 +10,15 @@
     <string name="error_empty_fields">Por favor, ingrese el usuario y la contraseña.</string>
     <string name="error_inactive_user">Usuario deshabilitado. Contacte al administrador</string>
     <string name="error_credenciales">Credenciales inválidas</string>
+    <!-- Pantalla de inicio de sesión: marca, guía del formulario y cuenta de
+         prueba. Los datos de la tarjeta salen del seed real (DatabaseHelper),
+         no de credenciales inventadas: hoy el seed crea una sola cuenta. -->
+    <string name="login_titulo">Bodega Express</string>
+    <string name="login_subtitulo">Ingresa tu cuenta para organizar productos, entradas y salidas de la bodega</string>
+    <string name="login_ayuda_usuario">Pide tu usuario al administrador</string>
+    <string name="login_ayuda_password">Distingue mayúsculas y minúsculas</string>
+    <string name="login_ayuda_demo">Usuarios de prueba: admin / admin · Crea más cuentas en Usuarios y Roles</string>
+
     <string name="error_username_duplicado">El nombre de usuario ya se encuentra registrado</string>
     <string name="msg_usuario_registrado">Usuario registrado exitosamente</string>
     <string name="msg_categoria_duplicada">Ya existe una categoría registrada con ese nombre</string>
@@ -26,7 +35,6 @@
 
     <string name="title_main">Panel Principal</string>
     <string name="welcome_user">¡Bienvenido!</string>
-    <string name="btn_admin_users_roles">Administrar Usuarios y Roles</string>
     <string name="btn_logout">Cerrar Sesión</string>
     <string name="logout_confirmation">¿Está seguro de que desea cerrar sesión?</string>
     <string name="yes">Sí</string>
@@ -52,15 +60,17 @@
     <string name="add_categoria">Agregar categoría</string>
     <string name="categoria_activa">Categoría activa</string>
 
-    <!-- Accesos desde el panel principal (inventario) -->
+    <!-- Accesos desde el panel principal: una tarjeta por módulo. El título va
+         arriba y la descripción explica en una línea qué hace el acceso; los
+         ids de los cuatro accesos los declara el layout del panel. -->
+    <string name="btn_admin_users_roles">Usuarios y Roles</string>
+    <string name="btn_admin_categorias">Gestión de Categorías</string>
     <string name="btn_admin_productos">Gestión de Productos</string>
     <string name="btn_admin_proveedores">Gestión de Proveedores</string>
-
-    <!-- Ids de los accesos al inventario. Se declaran aquí porque los botones
-         se crean en código: el layout del panel principal no forma parte de
-         este módulo y no debe modificarse para sumar dos accesos. -->
-    <item name="btnAdminProductos" type="id" />
-    <item name="btnAdminProveedores" type="id" />
+    <string name="menu_desc_usuarios">Crea cuentas y define qué puede hacer cada persona</string>
+    <string name="menu_desc_categorias">Organiza los productos por tipo</string>
+    <string name="menu_desc_productos">Registra, busca y revisa tu inventario</string>
+    <string name="menu_desc_proveedores">Administra quién surte tu bodega</string>
 
     <!-- CU-11: listado y búsqueda de productos -->
     <string name="title_productos">Productos</string>
@@ -76,11 +86,21 @@
     <string name="sin_categoria">Sin categoría</string>
     <string name="sin_proveedor">Sin proveedor</string>
     <string name="stock_bajo">Stock bajo</string>
+    <string name="stock_agotado">Sin stock</string>
+    <string name="label_stock_unidad">%1$d %2$s</string>
+    <string name="hero_titulo">Inventario al día</string>
+    <string name="hero_caption">Cada producto registrado queda disponible para entradas, salidas e informes</string>
+    <string name="label_total_productos">Productos en catálogo: %1$d</string>
+
+    <string name="section_identificacion">Identificación del producto</string>
+    <string name="section_precios_stock">Precios y stock</string>
+    <string name="section_clasificacion">Clasificación</string>
 
     <!-- Formulario de producto -->
     <string name="title_producto_nuevo">Nuevo Producto</string>
     <string name="title_producto_editar">Editar Producto</string>
     <string name="hint_sku">SKU</string>
+    <string name="hint_codigo_barras">Código de barras (opcional)</string>
     <string name="hint_nombre_producto">Nombre del producto</string>
     <string name="hint_descripcion_producto">Descripción</string>
     <string name="hint_precio_costo">Precio de costo</string>
@@ -89,6 +109,19 @@
     <string name="hint_stock_inicial">Stock inicial</string>
     <string name="hint_categoria">Categoría</string>
     <string name="hint_proveedor">Proveedor</string>
+    <string name="hint_unidad_medida">Unidad de medida</string>
+    <string name="msg_codigo_barras_duplicado">El código de barras ya está asociado a otro producto</string>
+
+    <string-array name="unidades_medida">
+        <item>unidad</item>
+        <item>kilogramo</item>
+        <item>gramo</item>
+        <item>litro</item>
+        <item>mililitro</item>
+        <item>metro</item>
+        <item>caja</item>
+        <item>paquete</item>
+    </string-array>
     <string name="section_movimientos">Movimientos de stock</string>
     <string name="btn_registrar_movimiento">Registrar movimiento</string>
     <string name="btn_guardar_producto">Guardar producto</string>
@@ -109,7 +142,8 @@
     <!-- Mensajes de producto -->
     <string name="msg_producto_guardado">Producto guardado correctamente</string>
     <string name="msg_sku_duplicado">El SKU ya existe</string>
-    <string name="msg_nombre_sku_requerido">El nombre y el SKU no pueden estar vacíos</string>
+    <!-- El SKU se genera solo cuando el usuario deja el campo vacío. -->
+    <string name="msg_sku_generado">SKU generado automáticamente: %1$s</string>
     <string name="msg_valores_invalidos">Los precios y el stock no pueden ser negativos</string>
     <string name="msg_categoria_requerida">Registre una categoría antes de crear productos</string>
     <string name="msg_producto_no_encontrado">El producto ya no está disponible</string>

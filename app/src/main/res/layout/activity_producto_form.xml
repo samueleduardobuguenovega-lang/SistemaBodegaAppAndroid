@@ -38,6 +38,17 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/section_identificacion"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:textColor="@color/primary"/>
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilSkuProducto"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -47,6 +58,26 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etSkuProducto"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_placeholder"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilCodigoBarras"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/hint_codigo_barras"
+                app:startIconDrawable="@drawable/ic_barcode"
+                app:startIconTint="@color/text_secondary">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etCodigoBarras"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="text"
@@ -91,6 +122,17 @@
                     android:textColor="@color/text_primary"
                     android:textColorHint="@color/text_placeholder"/>
             </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/section_precios_stock"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:textColor="@color/primary"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilPrecioCosto"
@@ -163,6 +205,17 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/section_clasificacion"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:textColor="@color/primary"/>
+
+            <TextView
                 android:id="@+id/tvLabelCategoria"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -173,6 +226,21 @@
 
             <Spinner
                 android:id="@+id/spinnerCategoria"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"/>
+
+            <TextView
+                android:id="@+id/tvLabelUnidadMedida"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/hint_unidad_medida"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"/>
+
+            <Spinner
+                android:id="@+id/spinnerUnidadMedida"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginTop="4dp"/>

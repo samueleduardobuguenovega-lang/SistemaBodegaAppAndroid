@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Acceso a datos de PRODUCTO y MOVIMIENTO.
@@ -27,8 +28,28 @@ import java.util.Locale;
  */
 public class ProductoDao {
 
-    /** Formato de fecha persistido en MOVIMIENTO.fecha (ISO-8601). */
-    private static final String FORMATO_FECHA = "yyyy-MM-dd HH:mm:ss";
+    /**
+     * Formato de fecha persistido en MOVIMIENTO.fecha: ordenable
+     * lexicográficamente, de ancho fijo y sin depender del idioma del
+     * dispositivo. Es el mismo formato canónico que usa la migración v7 de
+     * {@link DatabaseHelper} para normalizar las filas viejas.
+     */
+    static final String FORMATO_FECHA = "yyyy-MM-dd HH:mm:ss";
+
+    /**
+     * Locale y zona fijos de {@link #fechaActual()}: con Locale.US los dígitos
+     * son siempre ASCII y con UTC la fecha no cambia según la zona del equipo,
+     * que es lo que hacía inservible el ORDER BY del historial.
+     */
+    private static final Locale LOCALE_FECHA = Locale.US;
+    private static final TimeZone ZONA_FECHA = TimeZone.getTimeZone("UTC");
+
+    /**
+     * Tope de filas del catálogo y de la búsqueda (#render). Un LIKE '%texto%'
+     * no usa índices y con miles de productos degrada igual que el listado
+     * completo; el tope acota el costo de dibujar la lista.
+     */
+    private static final int LIMITE_BUSQUEDA = 200;
 
     private final DatabaseHelper helper;
 
@@ -51,6 +72,8 @@ public class ProductoDao {
                     + ", p." + DatabaseHelper.COLUMN_PROD_ACTIVO
                     + ", c." + DatabaseHelper.COLUMN_CAT_NOMBRE
                     + ", pr." + DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL
+                    + ", p." + DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS
+                    + ", p." + DatabaseHelper.COLUMN_PROD_UNIDAD_MEDIDA
                     + " FROM " + DatabaseHelper.TABLE_PRODUCTO + " p"
                     + " LEFT JOIN " + DatabaseHelper.TABLE_CATEGORIA + " c"
                     + " ON p." + DatabaseHelper.COLUMN_PROD_ID_CATEGORIA
@@ -73,18 +96,22 @@ public class ProductoDao {
             DatabaseHelper.COLUMN_PROD_ID_PROVEEDOR,
             DatabaseHelper.COLUMN_PROD_ACTIVO,
             DatabaseHelper.COLUMN_CAT_NOMBRE,
-            DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL
+            DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL,
+            DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS,
+            DatabaseHelper.COLUMN_PROD_UNIDAD_MEDIDA
     };
 
-    /** Listado de productos habilitados, ordenado alfabéticamente. */
+    /** Listado de productos habilitados, ordenado alfabéticamente y acotado. */
     public List<Producto> getAllProductos() {
         return consultarProductos(SELECT_CON_JOINS
                 + " WHERE p." + DatabaseHelper.COLUMN_PROD_ACTIVO + " = 1"
-                + " ORDER BY p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " ASC", null);
+                + " ORDER BY p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " ASC"
+                + " LIMIT " + LIMITE_BUSQUEDA, null);
     }
 
     /**
-     * Búsqueda por nombre o SKU entre los productos habilitados.
+     * Búsqueda por nombre o SKU entre los productos habilitados, acotada a
+     * {@link #LIMITE_BUSQUEDA} resultados.
      * Un texto nulo o vacío degrada al listado completo para no filtrar de más.
      */
     public List<Producto> buscarProductos(String texto) {
@@ -96,7 +123,8 @@ public class ProductoDao {
                 + " WHERE (p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " LIKE ?"
                 + " OR p." + DatabaseHelper.COLUMN_PROD_SKU + " LIKE ?)"
                 + " AND p." + DatabaseHelper.COLUMN_PROD_ACTIVO + " = 1"
-                + " ORDER BY p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " ASC",
+                + " ORDER BY p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " ASC"
+                + " LIMIT " + LIMITE_BUSQUEDA,
                 new String[]{patron, patron});
     }
 
@@ -123,6 +151,25 @@ public class ProductoDao {
      *
      * @return true si otro producto (habilitado o no) ya usa ese SKU.
      */
+    /**
+     * CU-03: comprueba si el código de barras informado ya lo usa otro
+     * producto. Igual que con el SKU, el UNIQUE de la tabla es global: la
+     * consulta incluye también a los productos deshabilitados.
+     */
+    public boolean existeCodigoBarrasEnOtroProducto(String codigoBarras, int idProductoExcluido) {
+        String sql = "SELECT COUNT(*) FROM " + DatabaseHelper.TABLE_PRODUCTO
+                + " WHERE " + DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS + " = ?"
+                + " AND " + DatabaseHelper.COLUMN_PROD_ID + " <> ?";
+        SQLiteDatabase db = helper.getReadableDatabase();
+        try (Cursor cursor = db.rawQuery(sql,
+                new String[]{codigoBarras, String.valueOf(idProductoExcluido)})) {
+            if (cursor.moveToFirst()) {
+                return cursor.getInt(0) > 0;
+            }
+        }
+        return false;
+    }
+
     public boolean existeSkuEnOtroProducto(String sku, int idProductoExcluido) {
         if (sku == null) {
             return false;
@@ -151,6 +198,16 @@ public class ProductoDao {
         cv.put(DatabaseHelper.COLUMN_PROD_DESCRIPCION, p.getDescripcion() != null ? p.getDescripcion().trim() : "");
         cv.put(DatabaseHelper.COLUMN_PROD_PRECIO_COSTO, p.getPrecioCosto());
         cv.put(DatabaseHelper.COLUMN_PROD_PRECIO_VENTA, p.getPrecioVenta());
+        // CU-03: el código de barras es opcional; vacío se guarda como NULL
+        // para que la UNIQUE admita varios productos "sin código".
+        if (p.getCodigoBarras() != null && !p.getCodigoBarras().trim().isEmpty()) {
+            cv.put(DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS, p.getCodigoBarras().trim());
+        } else {
+            cv.putNull(DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS);
+        }
+        if (p.getUnidadMedida() != null && !p.getUnidadMedida().trim().isEmpty()) {
+            cv.put(DatabaseHelper.COLUMN_PROD_UNIDAD_MEDIDA, p.getUnidadMedida().trim());
+        }
         cv.put(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL, p.getStockActual());
         cv.put(DatabaseHelper.COLUMN_PROD_STOCK_MINIMO, p.getStockMinimo());
         cv.put(DatabaseHelper.COLUMN_PROD_ID_CATEGORIA, p.getIdCategoria());
@@ -174,6 +231,45 @@ public class ProductoDao {
     }
 
     /**
+     * CU-04: alta de producto con su stock inicial como UNA SOLA transacción.
+     *
+     * El stock inicial entra como movimiento de ENTRADA auditado (RF-03), pero
+     * si ese movimiento falla el INSERT del producto también se revierte: nunca
+     * queda un producto "guardado" sin la entrada que explique su stock.
+     *
+     * @param p            producto a insertar; el stock actual del modelo se
+     *                     ignora en favor de {@code stockInicial}.
+     * @param stockInicial cantidad que entra como movimiento inicial; <= 0 no
+     *                     escribe movimiento.
+     * @param usuario      usuario que queda registrado en el movimiento.
+     * @param idProveedor  proveedor de la entrada; 0 o negativo se guarda NULL.
+     * @return id del producto, o -1 si el SKU choca con el UNIQUE global o si
+     *         la transacción no pudo completarse.
+     */
+    public long insertarProductoConStockInicial(Producto p, int stockInicial, String usuario,
+                                                int idProveedor) {
+        SQLiteDatabase db = helper.getWritableDatabase();
+        db.beginTransaction();
+        try {
+            long id = insertProducto(p);
+            if (id == -1) {
+                // SKU duplicado: no se marca éxito y no se escribe nada más.
+                return -1;
+            }
+            if (stockInicial > 0
+                    && !aplicarMovimientoEnTransaccionAbierta(db, (int) id, stockInicial,
+                            TipoMovimiento.ENTRADA, usuario, idProveedor)) {
+                // Sin setTransactionSuccessful() el INSERT del producto revierte.
+                return -1;
+            }
+            db.setTransactionSuccessful();
+            return id;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /**
      * Actualiza los datos editables del producto; devuelve false si no había fila
      * o si el SKU choca con el UNIQUE global de la tabla.
      */
@@ -185,6 +281,16 @@ public class ProductoDao {
         cv.put(DatabaseHelper.COLUMN_PROD_DESCRIPCION, p.getDescripcion() != null ? p.getDescripcion().trim() : "");
         cv.put(DatabaseHelper.COLUMN_PROD_PRECIO_COSTO, p.getPrecioCosto());
         cv.put(DatabaseHelper.COLUMN_PROD_PRECIO_VENTA, p.getPrecioVenta());
+        // Mismo trato que en el alta: vacío es NULL y la unidad solo se
+        // escribe si viene informada.
+        if (p.getCodigoBarras() != null && !p.getCodigoBarras().trim().isEmpty()) {
+            cv.put(DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS, p.getCodigoBarras().trim());
+        } else {
+            cv.putNull(DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS);
+        }
+        if (p.getUnidadMedida() != null && !p.getUnidadMedida().trim().isEmpty()) {
+            cv.put(DatabaseHelper.COLUMN_PROD_UNIDAD_MEDIDA, p.getUnidadMedida().trim());
+        }
         cv.put(DatabaseHelper.COLUMN_PROD_STOCK_MINIMO, p.getStockMinimo());
         cv.put(DatabaseHelper.COLUMN_PROD_ID_CATEGORIA, p.getIdCategoria());
         // Misma razon que en el alta: "Sin proveedor" llega como 0 y la clave
@@ -241,6 +347,10 @@ public class ProductoDao {
      * Una SALIDA que dejaría el stock en negativo se rechaza sin escribir nada,
      * de modo que el inventario nunca quede inconsistentemente bajo cero.
      *
+     * La transacción la abre y la cierra el llamador: aquí solo se escribe sobre
+     * el {@code db} recibido, para que el alta con stock inicial (CU-04) pueda
+     * envolver el INSERT del producto y este movimiento en UNA sola transacción.
+     *
      * @param idProveedor proveedor de la ENTRADA; 0 o negativo persiste como NULL.
      * @return true si el stock y el MOVIMIENTO quedaron registrados.
      */
@@ -251,53 +361,66 @@ public class ProductoDao {
         SQLiteDatabase db = helper.getWritableDatabase();
         db.beginTransaction();
         try {
-            int stockActual = leerStockActual(db, idProducto);
-            if (stockActual < 0) {
-                // Producto inexistente: no hay nada que mover.
+            if (!aplicarMovimientoEnTransaccionAbierta(db, idProducto, cantidad, tipo, usuario, idProveedor)) {
                 return false;
             }
-            int stockNuevo;
-            if (tipo == TipoMovimiento.ENTRADA) {
-                stockNuevo = stockActual + cantidad;
-            } else {
-                if (cantidad > stockActual) {
-                    // Salida mayor al stock disponible: se aborta antes de escribir.
-                    return false;
-                }
-                stockNuevo = stockActual - cantidad;
-            }
-
-            ContentValues cvStock = new ContentValues();
-            cvStock.put(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL, stockNuevo);
-            int filas = db.update(DatabaseHelper.TABLE_PRODUCTO, cvStock,
-                    DatabaseHelper.COLUMN_PROD_ID + " = ?",
-                    new String[]{String.valueOf(idProducto)});
-            if (filas == 0) {
-                return false;
-            }
-
-            ContentValues cvMov = new ContentValues();
-            cvMov.put(DatabaseHelper.COLUMN_MOV_ID_PRODUCTO, idProducto);
-            cvMov.put(DatabaseHelper.COLUMN_MOV_TIPO, tipo.getValor());
-            cvMov.put(DatabaseHelper.COLUMN_MOV_CANTIDAD, cantidad);
-            cvMov.put(DatabaseHelper.COLUMN_MOV_USUARIO, usuario != null ? usuario : "");
-            cvMov.put(DatabaseHelper.COLUMN_MOV_FECHA, fechaActual());
-            // Solo la entrada registra proveedor; 0 o negativo se guarda como NULL.
-            if (idProveedor > 0) {
-                cvMov.put(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR, idProveedor);
-            } else {
-                cvMov.putNull(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR);
-            }
-            long idMov = db.insert(DatabaseHelper.TABLE_MOVIMIENTO, null, cvMov);
-            if (idMov == -1) {
-                return false;
-            }
-
             db.setTransactionSuccessful();
             return true;
         } finally {
             db.endTransaction();
         }
+    }
+
+    /**
+     * Cuerpo del movimiento de stock. NO abre ni cierra transacción: escribe
+     * sobre la conexión recibida y devuelve false sin haber tocado nada cuando
+     * el movimiento es inválido.
+     */
+    private boolean aplicarMovimientoEnTransaccionAbierta(SQLiteDatabase db, int idProducto,
+                                                          int cantidad, TipoMovimiento tipo,
+                                                          String usuario, int idProveedor) {
+        if (tipo == null || cantidad <= 0) {
+            return false;
+        }
+        int stockActual = leerStockActual(db, idProducto);
+        if (stockActual < 0) {
+            // Producto inexistente: no hay nada que mover.
+            return false;
+        }
+        int stockNuevo;
+        if (tipo == TipoMovimiento.ENTRADA) {
+            stockNuevo = stockActual + cantidad;
+        } else {
+            if (cantidad > stockActual) {
+                // Salida mayor al stock disponible: se aborta antes de escribir.
+                return false;
+            }
+            stockNuevo = stockActual - cantidad;
+        }
+
+        ContentValues cvStock = new ContentValues();
+        cvStock.put(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL, stockNuevo);
+        int filas = db.update(DatabaseHelper.TABLE_PRODUCTO, cvStock,
+                DatabaseHelper.COLUMN_PROD_ID + " = ?",
+                new String[]{String.valueOf(idProducto)});
+        if (filas == 0) {
+            return false;
+        }
+
+        ContentValues cvMov = new ContentValues();
+        cvMov.put(DatabaseHelper.COLUMN_MOV_ID_PRODUCTO, idProducto);
+        cvMov.put(DatabaseHelper.COLUMN_MOV_TIPO, tipo.getValor());
+        cvMov.put(DatabaseHelper.COLUMN_MOV_CANTIDAD, cantidad);
+        cvMov.put(DatabaseHelper.COLUMN_MOV_USUARIO, usuario != null ? usuario : "");
+        cvMov.put(DatabaseHelper.COLUMN_MOV_FECHA, fechaActual());
+        // Solo la entrada registra proveedor; 0 o negativo se guarda como NULL.
+        if (idProveedor > 0) {
+            cvMov.put(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR, idProveedor);
+        } else {
+            cvMov.putNull(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR);
+        }
+        long idMov = db.insert(DatabaseHelper.TABLE_MOVIMIENTO, null, cvMov);
+        return idMov != -1;
     }
 
     /** Historial de movimientos de un producto, del más reciente al más antiguo. */
@@ -398,6 +521,8 @@ public class ProductoDao {
                 p.setActivo(cursor.getInt(10));
                 p.setNombreCategoria(cursor.getString(11));
                 p.setRazonSocialProveedor(cursor.getString(12));
+                p.setCodigoBarras(cursor.getString(13));
+                p.setUnidadMedida(cursor.getString(14));
                 list.add(p);
             } while (cursor.moveToNext());
         }
@@ -420,8 +545,14 @@ public class ProductoDao {
         return stock;
     }
 
-    /** Marca de tiempo local en el formato que espera MOVIMIENTO.fecha. */
+    /**
+     * Marca de tiempo en el formato que espera MOVIMIENTO.fecha: UTC y Locale
+     * fijo, así el ORDER BY sobre la columna ordena de verdad y una fecha escrita
+     * en un dispositivo en árabe o tailandés no rompe el historial.
+     */
     private String fechaActual() {
-        return new SimpleDateFormat(FORMATO_FECHA, Locale.getDefault()).format(new Date());
+        SimpleDateFormat formato = new SimpleDateFormat(FORMATO_FECHA, LOCALE_FECHA);
+        formato.setTimeZone(ZONA_FECHA);
+        return formato.format(new Date());
     }
 }

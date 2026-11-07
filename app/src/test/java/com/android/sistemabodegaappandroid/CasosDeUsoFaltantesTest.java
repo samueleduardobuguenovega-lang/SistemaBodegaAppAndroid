@@ -30,10 +30,13 @@ public class CasosDeUsoFaltantesTest {
 
     /** v5 existe justamente para esta columna de permisos; sin ella el esquema no cambió. */
     @Test
-    public void databaseVersionEsCinco() throws IOException {
+    /** La BD está en la versión 7: v6 agregó codigo_barras y unidad_medida a
+     *  PRODUCTO (CU-03) y v7 suma los índices y las fechas en formato
+     *  ordenable, todo con migración incremental sobre los datos existentes. */
+    public void databaseVersionSiete() throws IOException {
         String fuente = leer("DatabaseHelper.java");
-        assertTrue("DATABASE_VERSION debe valer 5",
-                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*5\\s*;.*"));
+        assertTrue("DATABASE_VERSION debe valer 7",
+                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*7\\s*;.*"));
     }
 
     /** La migración v4 debe usar ALTER TABLE incremental, nunca DROP TABLE. */

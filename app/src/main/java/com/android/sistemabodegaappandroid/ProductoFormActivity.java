@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
@@ -25,7 +26,9 @@ import com.android.sistemabodegaappandroid.model.Producto;
 import com.android.sistemabodegaappandroid.model.Proveedor;
 import com.android.sistemabodegaappandroid.model.TipoMovimiento;
 import com.android.sistemabodegaappandroid.session.SessionManager;
+import com.android.sistemabodegaappandroid.util.AccesoModulo;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
+import com.android.sistemabodegaappandroid.util.Permisos;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -70,6 +73,10 @@ public class ProductoFormActivity extends AppCompatActivity {
     private TextInputEditText etPrecioVenta;
     private TextInputEditText etStockMinimo;
     private TextInputEditText etStockInicial;
+    // CU-03: código de barras opcional y unidad de medida de lista fija.
+    private TextInputEditText etCodigoBarras;
+    private Spinner spinnerUnidadMedida;
+    private List<String> unidadesMedida;
     private android.view.View tilStockInicial;
     private Spinner spinnerCategoria;
     private Spinner spinnerProveedor;
@@ -98,6 +105,14 @@ public class ProductoFormActivity extends AppCompatActivity {
         dbHelper = new DatabaseHelper(this);
         productoDao = new ProductoDao(dbHelper);
         sessionManager = new SessionManager(this);
+
+        // RF-27: el formulario también se abre por intent directo (o queda en
+        // una tarea restaurada), así que revalida el permiso del módulo igual
+        // que el listado. AccesoModulo ya avisa, vuelve al panel y cierra.
+        if (!AccesoModulo.permitido(this, Permisos.PRODUCTOS)) {
+            return;
+        }
+
         idProducto = getIntent().getIntExtra(EXTRA_ID_PRODUCTO, 0);
 
         etSku = findViewById(R.id.etSkuProducto);
@@ -108,6 +123,8 @@ public class ProductoFormActivity extends AppCompatActivity {
         etStockMinimo = findViewById(R.id.etStockMinimo);
         etStockInicial = findViewById(R.id.etStockInicial);
         tilStockInicial = findViewById(R.id.tilStockInicial);
+        etCodigoBarras = findViewById(R.id.etCodigoBarras);
+        spinnerUnidadMedida = findViewById(R.id.spinnerUnidadMedida);
         spinnerCategoria = findViewById(R.id.spinnerCategoria);
         spinnerProveedor = findViewById(R.id.spinnerProveedor);
         tvStockActual = findViewById(R.id.tvStockActual);
@@ -126,6 +143,7 @@ public class ProductoFormActivity extends AppCompatActivity {
 
         cargarCategorias();
         cargarProveedores();
+        configurarUnidadesMedida();
 
         if (idProducto > 0) {
             cargarProductoExistente();
@@ -141,6 +159,38 @@ public class ProductoFormActivity extends AppCompatActivity {
 
         btnGuardar.setOnClickListener(v -> guardar());
         btnMovimiento.setOnClickListener(v -> mostrarDialogoMovimiento());
+
+        animarEntradaFormulario();
+    }
+
+    /**
+     * Entrada escalonada estilo Expressive: cada sección del formulario sube y
+     * aparece con ~40 ms de desfase, en vez de aparecer todo de golpe.
+     */
+    private void animarEntradaFormulario() {
+        ViewGroup raizScroll = findViewById(R.id.scrollProductoForm);
+        if (raizScroll == null || raizScroll.getChildCount() == 0) {
+            return;
+        }
+        ViewGroup contenido = (ViewGroup) raizScroll.getChildAt(0);
+        long desfase = 0L;
+        for (int i = 0; i < contenido.getChildCount(); i++) {
+            View hijo = contenido.getChildAt(i);
+            hijo.setAlpha(0f);
+            hijo.setTranslationY(28f);
+            hijo.animate().alpha(1f).translationY(0f)
+                    .setStartDelay(desfase)
+                    .setDuration(240)
+                    .setInterpolator(new DecelerateInterpolator(1.4f))
+                    .start();
+            desfase += 40L;
+        }
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
     /**
@@ -149,6 +199,31 @@ public class ProductoFormActivity extends AppCompatActivity {
      * La lista llega por LiveData (CU-10): la consulta corre en el executor de
      * DatabaseHelper y el observer rellena el spinner en el hilo principal.
      */
+    /**
+     * Rellena el selector de unidad de medida desde una lista fija del
+     * proyecto (array unidades_medida), igual que las categorías fijas:
+     * la unidad no se administra, se elige.
+     */
+    private void configurarUnidadesMedida() {
+        unidadesMedida = new ArrayList<>();
+        for (String unidad : getResources().getStringArray(R.array.unidades_medida)) {
+            unidadesMedida.add(unidad);
+        }
+        ArrayAdapter<String> adaptador = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, unidadesMedida);
+        adaptador.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerUnidadMedida.setAdapter(adaptador);
+    }
+
+    /** Posición en el selector de la unidad guardada; 0 (primera) si no está. */
+    private int indiceUnidad(String unidad) {
+        if (unidadesMedida == null || unidad == null) {
+            return 0;
+        }
+        int indice = unidadesMedida.indexOf(unidad);
+        return indice >= 0 ? indice : 0;
+    }
+
     private void cargarCategorias() {
         dbHelper.observarCategoriasActivas().observe(this, lista -> {
             if (lista == null) {
@@ -227,6 +302,8 @@ public class ProductoFormActivity extends AppCompatActivity {
         etPrecioCosto.setText(formatearDecimalEdicion(producto.getPrecioCosto()));
         etPrecioVenta.setText(formatearDecimalEdicion(producto.getPrecioVenta()));
         etStockMinimo.setText(String.valueOf(producto.getStockMinimo()));
+        etCodigoBarras.setText(producto.getCodigoBarras() != null ? producto.getCodigoBarras() : "");
+        spinnerUnidadMedida.setSelection(indiceUnidad(producto.getUnidadMedida()));
 
         spinnerCategoria.setSelection(indiceCategoria(producto.getIdCategoria()));
         spinnerProveedor.setSelection(indiceProveedor(producto.getIdProveedor()));
@@ -303,7 +380,8 @@ public class ProductoFormActivity extends AppCompatActivity {
                 sku = "SKU-" + (System.currentTimeMillis() % 10000000) + "-" + (int) (Math.random() * 1000);
             }
             etSku.setText(sku);
-            Toast.makeText(this, "SKU generado automáticamente: " + sku, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.msg_sku_generado, sku),
+                    Toast.LENGTH_SHORT).show();
         }
 
         double precioCosto = parseDecimal(texto(etPrecioCosto));
@@ -321,6 +399,22 @@ public class ProductoFormActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.msg_valores_invalidos, Toast.LENGTH_SHORT).show();
             return;
         }
+
+        // CU-03: el código de barras solo se valida cuando se informa; el
+        // vacío es NULL y puede repetirse. La comprobación es igual a la del
+        // SKU: contra todos los productos, deshabilitados incluidos.
+        String codigoBarras = texto(etCodigoBarras).trim();
+        if (!codigoBarras.isEmpty()
+                && productoDao.existeCodigoBarrasEnOtroProducto(codigoBarras, idProducto)) {
+            Toast.makeText(this, R.string.msg_codigo_barras_duplicado,
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        String unidadMedida = unidadesMedida != null
+                && spinnerUnidadMedida.getSelectedItemPosition() >= 0
+                && spinnerUnidadMedida.getSelectedItemPosition() < unidadesMedida.size()
+                ? unidadesMedida.get(spinnerUnidadMedida.getSelectedItemPosition())
+                : "";
 
         // Sin categoría la fila quedaría huerfana en el inventario.
         if (categorias.isEmpty()) {
@@ -340,16 +434,18 @@ public class ProductoFormActivity extends AppCompatActivity {
 
         if (idProducto > 0) {
             guardarEdicion(sku, nombre, texto(etDescripcion), precioCosto, precioVenta,
-                    stockMinimo, idCategoria, idProveedor);
+                    stockMinimo, idCategoria, idProveedor, codigoBarras, unidadMedida);
         } else {
             guardarAlta(sku, nombre, texto(etDescripcion), precioCosto, precioVenta,
-                    stockMinimo, stockInicial, idCategoria, idProveedor);
+                    stockMinimo, stockInicial, idCategoria, idProveedor,
+                    codigoBarras, unidadMedida);
         }
     }
 
     private void guardarAlta(String skuParam, String nombre, String descripcion,
                              double precioCosto, double precioVenta, int stockMinimo,
-                             int stockInicial, int idCategoria, int idProveedor) {
+                             int stockInicial, int idCategoria, int idProveedor,
+                             String codigoBarras, String unidadMedida) {
         String sku = skuParam;
         Producto nuevo = new Producto();
         nuevo.setSkuCodigo(sku);
@@ -363,26 +459,32 @@ public class ProductoFormActivity extends AppCompatActivity {
         nuevo.setStockMinimo(stockMinimo);
         nuevo.setIdCategoria(idCategoria);
         nuevo.setIdProveedor(idProveedor);
+        nuevo.setCodigoBarras(codigoBarras.isEmpty() ? null : codigoBarras);
+        nuevo.setUnidadMedida(unidadMedida);
 
-        long resultado = productoDao.insertProducto(nuevo);
-        if (resultado == -1) {
-            // Reintento automático con SKU nuevo si hubo colisión imprevista
+        // El stock inicial se asienta como movimiento de entrada auditada (stockInicial, TipoMovimiento.ENTRADA)
+        // pero dentro de la MISMA transacción que el INSERT del producto (CU-04):
+        // o quedan los dos, o no queda ninguno de los dos.
+        long resultado = productoDao.insertarProductoConStockInicial(nuevo, stockInicial,
+                sessionManager.getUsername(), idProveedor);
+
+        if (resultado == -1 && productoDao.existeSkuEnOtroProducto(sku, 0)) {
+            // Reintento automático con SKU nuevo si hubo colisión imprevista.
             sku = "SKU-" + (System.currentTimeMillis() % 10000000) + "-" + (int) (Math.random() * 1000);
             nuevo.setSkuCodigo(sku);
             etSku.setText(sku);
-            resultado = productoDao.insertProducto(nuevo);
-        }
-
-        if (resultado == -1) {
-            Toast.makeText(this, R.string.msg_sku_duplicado, Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        if (stockInicial > 0) {
-            // El stock inicial se asienta como entrada auditada, igual que
-            // cualquier entrada posterior del producto.
-            productoDao.actualizarStock((int) resultado, stockInicial, TipoMovimiento.ENTRADA,
+            resultado = productoDao.insertarProductoConStockInicial(nuevo, stockInicial,
                     sessionManager.getUsername(), idProveedor);
+        }
+
+        if (resultado < 0) {
+            // Un -1 nunca es éxito: o el SKU sigue chocando con el UNIQUE global
+            // o la transacción revirtió el alta junto con su movimiento.
+            boolean skuOcupado = productoDao.existeSkuEnOtroProducto(sku, 0);
+            Toast.makeText(this,
+                    skuOcupado ? R.string.msg_sku_duplicado : R.string.msg_producto_error,
+                    Toast.LENGTH_LONG).show();
+            return;
         }
 
         Toast.makeText(this, R.string.msg_producto_guardado, Toast.LENGTH_SHORT).show();
@@ -391,7 +493,8 @@ public class ProductoFormActivity extends AppCompatActivity {
 
     private void guardarEdicion(String sku, String nombre, String descripcion,
                                 double precioCosto, double precioVenta, int stockMinimo,
-                                int idCategoria, int idProveedor) {
+                                int idCategoria, int idProveedor,
+                                String codigoBarras, String unidadMedida) {
         // El UNIQUE de sku_codigo es global: comprobamos contra TODOS los productos
         // (también deshabilitados) antes de escribir, porque buscarProductos solo
         // mira los activos y una reasignación a un SKU de un producto dado de baja
@@ -409,6 +512,8 @@ public class ProductoFormActivity extends AppCompatActivity {
         producto.setStockMinimo(stockMinimo);
         producto.setIdCategoria(idCategoria);
         producto.setIdProveedor(idProveedor);
+        producto.setCodigoBarras(codigoBarras.isEmpty() ? null : codigoBarras);
+        producto.setUnidadMedida(unidadMedida);
 
         if (productoDao.updateProducto(producto)) {
             Toast.makeText(this, R.string.msg_producto_guardado, Toast.LENGTH_SHORT).show();

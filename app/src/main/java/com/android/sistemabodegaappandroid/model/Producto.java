@@ -21,6 +21,8 @@ public class Producto {
     private int stockMinimo;
     private int idCategoria;
     private int idProveedor;
+    private String codigoBarras;
+    private String unidadMedida;
     private int activo;
     private String nombreCategoria;
     private String razonSocialProveedor;
@@ -129,6 +131,22 @@ public class Producto {
 
     public void setIdProveedor(int idProveedor) {
         this.idProveedor = idProveedor;
+    }
+
+    public String getCodigoBarras() {
+        return codigoBarras;
+    }
+
+    public void setCodigoBarras(String codigoBarras) {
+        this.codigoBarras = codigoBarras;
+    }
+
+    public String getUnidadMedida() {
+        return unidadMedida;
+    }
+
+    public void setUnidadMedida(String unidadMedida) {
+        this.unidadMedida = unidadMedida;
     }
 
     public int getActivo() {

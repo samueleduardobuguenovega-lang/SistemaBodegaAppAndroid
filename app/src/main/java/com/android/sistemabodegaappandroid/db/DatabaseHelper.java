@@ -18,15 +18,20 @@ import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.util.PasswordUtils;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "sistema_bodega.db";
-    private static final int DATABASE_VERSION = 5; // 5: ROL incluye columna permisos
+    private static final int DATABASE_VERSION = 7; // 7: índices + fechas de MOVIMIENTO ordenables
 
     /** Etiqueta de los registros de log del helper (fallos de migración, etc.). */
     private static final String TAG = "DatabaseHelper";
@@ -86,6 +91,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_PROD_ID_CATEGORIA = "id_categoria";
     public static final String COLUMN_PROD_ID_PROVEEDOR = "id_proveedor";
     public static final String COLUMN_PROD_ACTIVO = "activo";
+    // CU-03: el código de barras es único cuando se informa; la UNIQUE de
+    // SQLite admite varios NULL, así que "sin código" puede repetirse.
+    public static final String COLUMN_PROD_CODIGO_BARRAS = "codigo_barras";
+    // RF-03: la unidad de medida acompaña al alta del producto.
+    public static final String COLUMN_PROD_UNIDAD_MEDIDA = "unidad_medida";
 
     // Tabla MOVIMIENTO (CU-12)
     public static final String TABLE_MOVIMIENTO = "MOVIMIENTO";
@@ -119,6 +129,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             "CREATE TABLE IF NOT EXISTS " + TABLE_PRODUCTO + " ("
                     + COLUMN_PROD_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + COLUMN_PROD_SKU + " TEXT NOT NULL UNIQUE, "
+                    + COLUMN_PROD_CODIGO_BARRAS + " TEXT UNIQUE, "
+                    + COLUMN_PROD_UNIDAD_MEDIDA + " TEXT, "
                     + COLUMN_PROD_NOMBRE + " TEXT NOT NULL, "
                     + COLUMN_PROD_DESCRIPCION + " TEXT, "
                     + COLUMN_PROD_PRECIO_COSTO + " REAL NOT NULL DEFAULT 0, "
@@ -141,6 +153,41 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + COLUMN_MOV_ID_PROVEEDOR + " INTEGER, "
                     + "FOREIGN KEY (" + COLUMN_MOV_ID_PRODUCTO + ") REFERENCES " + TABLE_PRODUCTO + "(" + COLUMN_PROD_ID + ")"
                     + ");"
+    };
+
+    /**
+     * Índices del módulo de inventario (#8). Se ejecutan en onCreate y en
+     * onUpgrade con IF NOT EXISTS, así que son idempotentes y un reintento de la
+     * migración no falla: el SKU y el código de barras se buscan en cada alta y
+     * el historial siempre filtra MOVIMIENTO por id_producto.
+     */
+    private static final String[] SQL_INDICES = {
+            "CREATE INDEX IF NOT EXISTS idx_producto_sku ON " + TABLE_PRODUCTO
+                    + "(" + COLUMN_PROD_SKU + ");",
+            "CREATE INDEX IF NOT EXISTS idx_producto_barras ON " + TABLE_PRODUCTO
+                    + "(" + COLUMN_PROD_CODIGO_BARRAS + ");",
+            "CREATE INDEX IF NOT EXISTS idx_movimiento_producto ON " + TABLE_MOVIMIENTO
+                    + "(" + COLUMN_MOV_ID_PRODUCTO + ");"
+    };
+
+    /**
+     * Formato canónico de MOVIMIENTO.fecha para la migración v7: es el mismo que
+     * escribe {@link ProductoDao}, de modo que ambos lados no pueden divergir.
+     */
+    private static final String FORMATO_FECHA_ORDENABLE = ProductoDao.FORMATO_FECHA;
+
+    /**
+     * Locales con los que una instalación vieja pudo haber escrito la fecha:
+     * antes se usaba {@code Locale.getDefault()}, y en árabe, persa, tailandés o
+     * hindi eso produce dígitos no ASCII (o un año no gregoriano) que rompen el
+     * ORDER BY lexicográfico del historial. El patrón era el mismo; lo que
+     * cambiaba era el idioma del equipo.
+     */
+    private static final Locale[] LOCALES_LEGACY = {
+            Locale.forLanguageTag("ar"),
+            Locale.forLanguageTag("fa"),
+            Locale.forLanguageTag("th-TH-u-nu-thai"),
+            Locale.forLanguageTag("hi-IN-u-nu-deva")
     };
 
     public DatabaseHelper(Context context) {
@@ -200,6 +247,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL(sqlInventario);
         }
 
+        // #8: los índices acompañan al esquema desde el día uno.
+        crearIndices(db);
+
         // Insertar roles iniciales de prueba
         insertInitialSeedData(db);
     }
@@ -246,6 +296,133 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // acceso a ningun modulo, administrador incluido.
             rellenarPermisosDeRolesExistentes(db);
         }
+        if (oldVersion < 6) {
+            // v6: el alta de producto (CU-03) ahora registra código de barras y
+            // unidad de medida. Ambas columnas son opcionales: el código de
+            // barras es UNIQUE y varios NULL son válidos, así que un producto
+            // sin código sigue siendo legítimo; la unidad es texto plano.
+            agregarColumnaSiFalta(db, TABLE_PRODUCTO, COLUMN_PROD_CODIGO_BARRAS,
+                    "ALTER TABLE " + TABLE_PRODUCTO + " ADD COLUMN " + COLUMN_PROD_CODIGO_BARRAS + " TEXT",
+                    "v6: PRODUCTO." + COLUMN_PROD_CODIGO_BARRAS);
+            agregarColumnaSiFalta(db, TABLE_PRODUCTO, COLUMN_PROD_UNIDAD_MEDIDA,
+                    "ALTER TABLE " + TABLE_PRODUCTO + " ADD COLUMN " + COLUMN_PROD_UNIDAD_MEDIDA + " TEXT",
+                    "v6: PRODUCTO." + COLUMN_PROD_UNIDAD_MEDIDA);
+        }
+        if (oldVersion < 7) {
+            // v7: los índices y las fechas ordenables. El paso va DESPUÉS del v6
+            // a propósito: idx_producto_barras indexa codigo_barras, que solo
+            // existe cuando el paso anterior ya corrió.
+            crearIndices(db);
+            normalizarFechasDeMovimiento(db);
+        }
+    }
+
+    /** Crea los índices del módulo; IF NOT EXISTS lo hace idempotente. */
+    private void crearIndices(SQLiteDatabase db) {
+        for (String sqlIndice : SQL_INDICES) {
+            db.execSQL(sqlIndice);
+        }
+    }
+
+    /**
+     * Reescribe MOVIMIENTO.fecha al formato ordenable ({@code yyyy-MM-dd
+     * HH:mm:ss}, UTC, dígitos ASCII).
+     *
+     * Antes la fecha se formateaba con {@code Locale.getDefault()}: en un equipo
+     * en árabe o tailandés la fila quedaba con dígitos no ASCII o con año
+     * budista y el ORDER BY del historial dejaba de ser cronológico. Como el
+     * patrón no cambió, la fila vieja se puede releer con el Locale que la
+     * escribió y reemitirla en el formato canónico; la hora no se convierte de zona
+     * porque la fila vieja era hora local sin zona registrada y el objetivo es
+     * que ordene, no reinterpretarla.
+     *
+     * Solo se tocan las filas que no están ya en el formato canónico y que
+     * parsean con alguno de los formatos conocidos; el resto se conserva con un
+     * aviso en el log, en vez de perder el dato. Cualquier fallo de escritura se
+     * registra y se propaga: SQLiteOpenHelper revierte la migración completa y
+     * la base conserva la versión anterior, sin quedar a medio convertir.
+     */
+    private void normalizarFechasDeMovimiento(SQLiteDatabase db) {
+        SimpleDateFormat canonico = nuevoFormateadorFechas(Locale.US);
+        List<SimpleDateFormat> candidatos = new ArrayList<>();
+        candidatos.add(nuevoFormateadorFechas(Locale.getDefault()));
+        for (Locale locale : LOCALES_LEGACY) {
+            candidatos.add(nuevoFormateadorFechas(locale));
+        }
+
+        List<String[]> cambios = new ArrayList<>();
+        try (Cursor cursor = db.rawQuery(
+                "SELECT " + COLUMN_MOV_ID + ", " + COLUMN_MOV_FECHA
+                        + " FROM " + TABLE_MOVIMIENTO, null)) {
+            int indiceId = cursor.getColumnIndexOrThrow(COLUMN_MOV_ID);
+            int indiceFecha = cursor.getColumnIndexOrThrow(COLUMN_MOV_FECHA);
+            while (cursor.moveToNext()) {
+                String fecha = cursor.getString(indiceFecha);
+                String normalizada = normalizarFecha(fecha, canonico, candidatos);
+                if (normalizada != null && !normalizada.equals(fecha)) {
+                    cambios.add(new String[]{String.valueOf(cursor.getInt(indiceId)), normalizada});
+                }
+            }
+        }
+
+        if (cambios.isEmpty()) {
+            return;
+        }
+        try {
+            for (String[] cambio : cambios) {
+                ContentValues cv = new ContentValues();
+                cv.put(COLUMN_MOV_FECHA, cambio[1]);
+                db.update(TABLE_MOVIMIENTO, cv,
+                        COLUMN_MOV_ID + " = ?", new String[]{cambio[0]});
+            }
+        } catch (SQLException e) {
+            Log.e(TAG, "Fallo el paso de migracion v7: normalizar "
+                    + TABLE_MOVIMIENTO + "." + COLUMN_MOV_FECHA, e);
+            throw e;
+        }
+    }
+
+    /**
+     * @return la fecha ya en el formato canónico, la misma cadena si ya lo
+     *         estaba, o null cuando no se reconoce ningún formato conocido
+     *         (en ese caso la fila se conserva tal cual).
+     */
+    private String normalizarFecha(String fecha, SimpleDateFormat canonico,
+                                   List<SimpleDateFormat> candidatos) {
+        if (fecha == null || fecha.trim().isEmpty()) {
+            return null;
+        }
+        String valor = fecha.trim();
+        Date canonica = parsearFecha(canonico, valor);
+        if (canonica != null && canonico.format(canonica).equals(valor)) {
+            // Ya está en el formato ordenable: no hay nada que reescribir.
+            return valor;
+        }
+        for (SimpleDateFormat candidato : candidatos) {
+            Date legacy = parsearFecha(candidato, valor);
+            if (legacy != null) {
+                return canonico.format(legacy);
+            }
+        }
+        Log.w(TAG, "Fecha de movimiento no reconocida, se conserva: " + valor);
+        return null;
+    }
+
+    /** Parsea sin leniencia: una fecha inventada no debe reescribirse. */
+    private Date parsearFecha(SimpleDateFormat formato, String valor) {
+        try {
+            return formato.parse(valor);
+        } catch (ParseException e) {
+            return null;
+        }
+    }
+
+    /** Formateador del historial: mismo patrón, UTC y sin leniencia. */
+    private SimpleDateFormat nuevoFormateadorFechas(Locale locale) {
+        SimpleDateFormat formato = new SimpleDateFormat(FORMATO_FECHA_ORDENABLE, locale);
+        formato.setTimeZone(TimeZone.getTimeZone("UTC"));
+        formato.setLenient(false);
+        return formato;
     }
 
     /**
