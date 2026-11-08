@@ -317,6 +317,45 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Repara una base marcada como migrada a la que le falta ROL.permisos.
+     *
+     * `onUpgrade` solo corre cuando la version guardada en el archivo es menor
+     * que {@link #DATABASE_VERSION}: una base que ya quedo marcada como v5 o
+     * superior sin la columna no se vuelve a migrar nunca, y el primer
+     * `SELECT permisos` de la sesion muere con «no such column: permisos» en el
+     * login. Paso cuando el numero de version subio en una copia del helper y el
+     * ALTER no lo acompano, o cuando un merge dejo el helper viejo encima del
+     * nuevo: la app se instala, la base queda marcada en la version nueva y la
+     * columna no existe.
+     *
+     * La comprobacion es un PRAGMA sobre metadatos, asi que abrir la app no
+     * cuesta nada cuando el esquema esta completo; el ALTER y el relleno solo
+     * corren en la base rota, que es justo la que hoy revienta.
+     */
+    @Override
+    public void onOpen(SQLiteDatabase db) {
+        super.onOpen(db);
+        repararPermisosDeRol(db);
+    }
+
+    /**
+     * Deja ROL.permisos y su relleno en una base que se declaro migrada sin
+     * tener la columna. Es idempotente: con la columna presente no hace nada y
+     * no pisa los permisos que el usuario ya definio.
+     */
+    private void repararPermisosDeRol(SQLiteDatabase db) {
+        if (columnaExisteEnTabla(db, TABLE_ROL, COLUMN_ROL_PERMISOS)) {
+            return;
+        }
+        Log.w(TAG, "La base quedo marcada como migrada sin " + TABLE_ROL + "."
+                + COLUMN_ROL_PERMISOS + "; se agrega la columna y se rellenan los roles");
+        agregarColumnaSiFalta(db, TABLE_ROL, COLUMN_ROL_PERMISOS,
+                "ALTER TABLE " + TABLE_ROL + " ADD COLUMN " + COLUMN_ROL_PERMISOS + " TEXT",
+                "reparacion: " + TABLE_ROL + "." + COLUMN_ROL_PERMISOS);
+        rellenarPermisosDeRolesExistentes(db);
+    }
+
     /** Crea los índices del módulo; IF NOT EXISTS lo hace idempotente. */
     private void crearIndices(SQLiteDatabase db) {
         for (String sqlIndice : SQL_INDICES) {

@@ -122,4 +122,26 @@ public class EsquemaProductoTest {
         assertTrue("onCreate debe crear las tablas del inventario",
                 bloque.contains("SQL_TABLAS_INVENTARIO"));
     }
+
+    /**
+     * Una base que se declaro migrada sin la columna no vuelve a pasar por
+     * onUpgrade nunca, y el login revienta con «no such column: permisos».
+     * onOpen tiene que repararla antes de que alguien consulte.
+     */
+    @Test
+    public void onOpenReparaLaColumnaPermisos() {
+        String apertura = entre("public void onOpen(", "private void insertInitialSeedData");
+        assertTrue("onOpen debe llamar a la reparacion de permisos",
+                apertura.contains("repararPermisosDeRol"));
+
+        String reparacion = entre("private void repararPermisosDeRol(", "private void insertInitialSeedData");
+        assertTrue("La reparacion debe consultar ROL.permisos",
+                reparacion.contains("COLUMN_ROL_PERMISOS"));
+        assertTrue("Debe mirar si la columna existe antes de alterar la tabla",
+                reparacion.contains("columnaExisteEnTabla"));
+        assertTrue("Debe agregar la columna con el paso idempotente",
+                reparacion.contains("agregarColumnaSiFalta"));
+        assertTrue("Debe rellenar los roles que ya existian",
+                reparacion.contains("rellenarPermisosDeRolesExistentes"));
+    }
 }
