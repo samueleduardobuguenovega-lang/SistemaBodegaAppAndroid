@@ -109,6 +109,14 @@ public class ProductoDao {
                 + " LIMIT " + LIMITE_BUSQUEDA, null);
     }
 
+    /** Listado de productos deshabilitados (baja lógica, activo = 0), ordenado alfabéticamente y acotado. */
+    public List<Producto> getProductosInactivos() {
+        return consultarProductos(SELECT_CON_JOINS
+                + " WHERE p." + DatabaseHelper.COLUMN_PROD_ACTIVO + " = 0"
+                + " ORDER BY p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " ASC"
+                + " LIMIT " + LIMITE_BUSQUEDA, null);
+    }
+
     /**
      * Búsqueda por nombre o SKU entre los productos habilitados, acotada a
      * {@link #LIMITE_BUSQUEDA} resultados.

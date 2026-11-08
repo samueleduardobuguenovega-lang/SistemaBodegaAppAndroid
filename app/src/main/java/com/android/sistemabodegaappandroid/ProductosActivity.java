@@ -8,13 +8,17 @@ import android.view.View;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
+import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.sistemabodegaappandroid.db.DatabaseHelper;
+import com.android.sistemabodegaappandroid.db.ProductoDao;
+import com.android.sistemabodegaappandroid.model.Producto;
 import com.android.sistemabodegaappandroid.ui.adapter.ProductoAdapter;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -23,6 +27,8 @@ import com.google.android.material.textfield.TextInputEditText;
 
 import com.android.sistemabodegaappandroid.util.AccesoModulo;
 import com.android.sistemabodegaappandroid.util.Permisos;
+
+import java.util.List;
 
 /**
  * Listado de productos con búsqueda por nombre o SKU (CU-11 / RF-04 y RF-05).
@@ -34,11 +40,13 @@ import com.android.sistemabodegaappandroid.util.Permisos;
 public class ProductosActivity extends AppCompatActivity {
 
     private DatabaseHelper dbHelper;
+    private ProductoDao productoDao;
     private ProductoAdapter adapter;
     private RecyclerView rvProductos;
     private TextView tvVacioProductos;
     private TextView tvHeroConteo;
     private ImageView ivVacioProductos;
+    private Switch switchVerInactivos;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,10 +65,12 @@ public class ProductosActivity extends AppCompatActivity {
         EdgeToEdgeInsets.apply(this, findViewById(R.id.rootProductos));
 
         dbHelper = new DatabaseHelper(this);
+        productoDao = new ProductoDao(dbHelper);
         rvProductos = findViewById(R.id.rvProductos);
         tvVacioProductos = findViewById(R.id.tvVacioProductos);
         tvHeroConteo = findViewById(R.id.tvHeroConteo);
         ivVacioProductos = findViewById(R.id.ivVacioProductos);
+        switchVerInactivos = findViewById(R.id.switchVerInactivos);
         TextInputEditText etBuscar = findViewById(R.id.etBuscarProducto);
         MaterialToolbar toolbar = findViewById(R.id.toolbarProductos);
         FloatingActionButton fabAgregar = findViewById(R.id.fabAgregarProducto);
@@ -86,6 +96,9 @@ public class ProductosActivity extends AppCompatActivity {
         // RF-04/RF-05: la lista observa el LiveData del helper. Cada actualización
         // llega ya resuelta al hilo principal, con el filtro de nombre o SKU aplicado.
         dbHelper.observarProductos(null).observe(this, productos -> {
+            if (switchVerInactivos != null && switchVerInactivos.isChecked()) {
+                return; // Si estamos viendo los inactivos, ignoramos temporalmente el LiveData activo
+            }
             if (productos == null) {
                 return;
             }
@@ -96,6 +109,18 @@ public class ProductosActivity extends AppCompatActivity {
             ivVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
             rvProductos.setVisibility(vacio ? View.GONE : View.VISIBLE);
         });
+
+        // Listener del Switch para alternar vistas
+        if (switchVerInactivos != null) {
+            switchVerInactivos.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                cargarListaProductosSegunSwitch();
+                if (isChecked) {
+                    Toast.makeText(this, "Mostrando productos deshabilitados", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Mostrando productos activos", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
 
         // Búsqueda en vivo: cada carácter solo pide un refresco; la consulta
         // la ejecuta el executor de DatabaseHelper fuera del hilo principal.
@@ -110,12 +135,35 @@ public class ProductosActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                dbHelper.refrescarProductos(s != null ? s.toString() : null);
+                cargarListaProductosSegunSwitch();
             }
         });
 
         fabAgregar.setOnClickListener(v ->
                 abrirFormulario(new Intent(this, ProductoFormActivity.class)));
+    }
+
+    /** Vuelve a ejecutar el DAO o consulta los inactivos según el estado del switch. */
+    private void cargarListaProductosSegunSwitch() {
+        if (switchVerInactivos != null && switchVerInactivos.isChecked()) {
+            List<Producto> inactivos = productoDao.getProductosInactivos();
+            String filtro = busquedaActual();
+            if (filtro != null && !filtro.trim().isEmpty()) {
+                String query = filtro.toLowerCase();
+                inactivos.removeIf(p ->
+                        (p.getNombre() == null || !p.getNombre().toLowerCase().contains(query)) &&
+                                (p.getSkuCodigo() == null || !p.getSkuCodigo().toLowerCase().contains(query))
+                );
+            }
+            adapter.updateData(inactivos);
+            tvHeroConteo.setText(getString(R.string.label_total_productos, inactivos.size()));
+            boolean vacio = inactivos.isEmpty();
+            tvVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
+            ivVacioProductos.setVisibility(vacio ? View.VISIBLE : View.GONE);
+            rvProductos.setVisibility(vacio ? View.GONE : View.VISIBLE);
+        } else {
+            dbHelper.refrescarProductos(busquedaActual());
+        }
     }
 
     /** Transición fluida al abrir el formulario (slide, estilo Expressive). */
@@ -134,7 +182,7 @@ public class ProductosActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // Vuelve a leer al regresar del formulario: ahí se creó o se movió stock.
-        dbHelper.refrescarProductos(busquedaActual());
+        cargarListaProductosSegunSwitch();
     }
 
     /** Texto que tiene el campo de búsqueda en este momento. */

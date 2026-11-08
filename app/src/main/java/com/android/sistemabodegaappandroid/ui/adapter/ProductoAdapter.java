@@ -51,7 +51,7 @@ public class ProductoAdapter extends ListAdapter<Producto, ProductoAdapter.Produ
         public boolean areContentsTheSame(@NonNull Producto a, @NonNull Producto b) {
             return a.getStockActual() == b.getStockActual()
                     && Double.compare(a.getPrecioVenta(), b.getPrecioVenta()) == 0
-                    &&Double.compare(a.getPrecioCosto(), b.getPrecioCosto()) == 0
+                    && Double.compare(a.getPrecioCosto(), b.getPrecioCosto()) == 0
                     && a.getStockMinimo() == b.getStockMinimo()
                     && a.getActivo() == b.getActivo()
                     && igual(a.getNombre(), b.getNombre())
