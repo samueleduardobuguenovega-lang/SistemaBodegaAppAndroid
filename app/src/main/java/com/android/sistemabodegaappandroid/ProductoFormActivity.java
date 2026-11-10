@@ -6,10 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +23,7 @@ import com.android.sistemabodegaappandroid.model.Producto;
 import com.android.sistemabodegaappandroid.model.Proveedor;
 import com.android.sistemabodegaappandroid.model.TipoMovimiento;
 import com.android.sistemabodegaappandroid.session.SessionManager;
+import com.android.sistemabodegaappandroid.ui.MovimientoStockDialog;
 import com.android.sistemabodegaappandroid.util.AccesoModulo;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.android.sistemabodegaappandroid.util.Permisos;
@@ -523,99 +521,20 @@ public class ProductoFormActivity extends AppCompatActivity {
         }
     }
 
-    /** Abre el diálogo de entrada/salida de stock del producto en edición. */
+    /**
+     * Abre el diálogo de entrada/salida de stock del producto en edición.
+     *
+     * Desde la unificación del diálogo (CU-04 / CU-05) este método solo delega:
+     * el listado de productos y el formulario muestran exactamente el mismo
+     * diálogo, con proveedor en las entradas, documento y motivo. Antes había
+     * dos copias y una de ellas guardaba siempre id_proveedor = 0.
+     */
     private void mostrarDialogoMovimiento() {
         if (producto == null || idProducto <= 0) {
             return;
         }
-
-        View vista = getLayoutInflater().inflate(R.layout.dialog_movimiento_stock, null);
-        TextView tvStockDialogo = vista.findViewById(R.id.tvStockActualDialog);
-        TextInputEditText etCantidad = vista.findViewById(R.id.etCantidadMovimiento);
-        RadioGroup rgTipo = vista.findViewById(R.id.rgTipoMovimiento);
-        tvStockDialogo.setText(getString(R.string.label_stock, producto.getStockActual()));
-
-        // El proveedor solo se asocia a entradas: en salidas el selector se oculta.
-        View contenedorProveedor = vista.findViewById(R.id.contenedorProveedorMovimiento);
-        AutoCompleteTextView selectorProveedor = vista.findViewById(R.id.spinnerProveedorMovimiento);
-        final List<Proveedor> proveedoresMovimiento = poblarSelectorProveedor(selectorProveedor);
-        RadioButton rbEntrada = vista.findViewById(R.id.rbEntrada);
-        rbEntrada.setOnCheckedChangeListener((buttonView, isChecked)
-                -> contenedorProveedor.setVisibility(isChecked ? View.VISIBLE : View.GONE));
-
-        AlertDialog dialogo = new AlertDialog.Builder(this)
-                .setTitle(R.string.dialog_movimiento_titulo)
-                .setView(vista)
-                .setPositiveButton(R.string.btn_confirmar_movimiento, null)
-                .setNegativeButton(R.string.cancel, null)
-                .create();
-
-        dialogo.show();
-
-        // El botón positivo se sobreescribe para poder validar la cantidad sin
-        // cerrar el diálogo: si el dato es inválido el usuario lo corrige ahí.
-        dialogo.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            int cantidad = parseEntero(texto(etCantidad));
-            if (cantidad <= 0) {
-                Toast.makeText(this, R.string.msg_cantidad_invalida, Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            TipoMovimiento tipo = rgTipo.getCheckedRadioButtonId() == R.id.rbSalida
-                    ? TipoMovimiento.SALIDA : TipoMovimiento.ENTRADA;
-
-            // Solo la entrada registra proveedor; la salida y "Sin proveedor" quedan en 0.
-            int idProveedorMovimiento = 0;
-            if (tipo == TipoMovimiento.ENTRADA) {
-                // AutoCompleteTextView no es un AdapterView: no expone la
-                // posición seleccionada, así que se resuelve por el texto elegido.
-                String seleccion = selectorProveedor.getText() != null
-                        ? selectorProveedor.getText().toString().trim() : "";
-                if (!seleccion.isEmpty() && !seleccion.equals(getString(R.string.sin_proveedor))) {
-                    for (Proveedor proveedor : proveedoresMovimiento) {
-                        if (proveedor.getRazonSocial() != null
-                                && proveedor.getRazonSocial().equals(seleccion)) {
-                            idProveedorMovimiento = proveedor.getIdProveedor();
-                            break;
-                        }
-                    }
-                }
-            }
-
-            boolean ok = productoDao.actualizarStock(
-                    idProducto, cantidad, tipo, sessionManager.getUsername(), idProveedorMovimiento);
-
-            if (ok) {
-                Toast.makeText(this, R.string.msg_movimiento_ok, Toast.LENGTH_SHORT).show();
-                dialogo.dismiss();
-                recargarProducto();
-            } else {
-                // Salida mayor que el stock disponible: el DAO la rechaza.
-                Toast.makeText(this, R.string.msg_movimiento_error, Toast.LENGTH_LONG).show();
-            }
-        });
-    }
-
-    /**
-     * Puebla el selector del diálogo con los proveedores activos y devuelve la
-     * lista en el mismo orden que las opciones. La primera opción es siempre
-     * "Sin proveedor": en una entrada el proveedor es opcional.
-     *
-     * No consulta la base: reutiliza la lista que ya entregó el observer de
-     * observarProveedores() (mismo contenido, mismo orden), así el diálogo se
-     * arma sin tocar SQLite en el hilo principal.
-     */
-    private List<Proveedor> poblarSelectorProveedor(AutoCompleteTextView selector) {
-        List<Proveedor> lista = proveedores;
-        List<String> nombres = new ArrayList<>();
-        nombres.add(getString(R.string.sin_proveedor));
-        for (Proveedor proveedor : lista) {
-            nombres.add(proveedor.getRazonSocial());
-        }
-        ArrayAdapter<String> adaptador = new ArrayAdapter<>(
-                this, android.R.layout.simple_list_item_1, nombres);
-        selector.setAdapter(adaptador);
-        return lista;
+        MovimientoStockDialog.mostrar(this, producto, proveedores, productoDao, sessionManager,
+                this::recargarProducto);
     }
 
     /** Vuelve a leer el producto para mostrar el stock ya actualizado. */

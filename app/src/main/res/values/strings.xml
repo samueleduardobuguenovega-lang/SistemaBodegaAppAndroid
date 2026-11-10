@@ -77,6 +77,8 @@
     <string name="subtitle_productos">Busque por nombre o SKU para localizar un producto</string>
     <string name="hint_search_productos">Buscar por nombre o SKU</string>
     <string name="empty_productos">Todavía no hay productos registrados</string>
+    <string name="empty_deshabilitados">No hay productos deshabilitados</string>
+    <string name="label_total_deshabilitados">Productos deshabilitados: %1$d</string>
     <string name="add_producto">Agregar producto</string>
     <string name="label_sku">SKU: %1$s</string>
     <string name="label_categoria">Categoría: %1$s</string>
@@ -137,6 +139,10 @@
     <string name="tipo_entrada">Entrada</string>
     <string name="tipo_salida">Salida</string>
     <string name="hint_cantidad_movimiento">Cantidad</string>
+    <!-- v8 (CU-04 / CU-05): el documento respalda el movimiento y el motivo
+         explica por qué se movió el stock. -->
+    <string name="hint_documento_movimiento">N° documento / guía (opcional)</string>
+    <string name="hint_motivo_movimiento">Motivo / destinatario / observación</string>
     <string name="btn_confirmar_movimiento">Registrar</string>
 
     <!-- Mensajes de producto -->
@@ -151,6 +157,20 @@
     <string name="msg_cantidad_invalida">Ingrese una cantidad mayor que cero</string>
     <string name="msg_movimiento_ok">Movimiento de stock registrado</string>
     <string name="msg_movimiento_error">No se pudo registrar el movimiento: revise la cantidad</string>
+    <string name="msg_stock_insuficiente">Stock insuficiente. Disponible: %1$d</string>
+    <string name="msg_motivo_requerido">Indique el motivo de la salida</string>
+    <!-- El movimiento queda auditado con el usuario de la sesión; si la sesión
+         no tiene usuario (por ejemplo, una sesión vieja sin username) se usa
+         esta etiqueta en vez de dejar el campo vacío. -->
+    <string name="usuario_sin_sesion">Operador</string>
+
+    <!-- Listado: acciones sobre un producto y filtro de deshabilitados -->
+    <string name="titulo_opciones_producto">Opciones: %1$s</string>
+    <string name="opcion_registrar_movimiento">Registrar entrada o salida</string>
+    <string name="opcion_editar_producto">Editar producto</string>
+    <string name="label_ver_deshabilitados">Ver deshabilitados</string>
+    <string name="msg_mostrando_deshabilitados">Mostrando productos deshabilitados</string>
+    <string name="msg_mostrando_activos">Mostrando productos activos</string>
 
     <!-- CU-12: proveedores -->
     <string name="title_proveedores">Proveedores</string>

@@ -2,6 +2,10 @@ package com.android.sistemabodegaappandroid.model;
 
 /**
  * Registro de entrada o salida de stock de un producto.
+ *
+ * Se guarda como POJO plano para leerlo con Cursor directamente, sin Room.
+ * El campo "tipo" persiste como texto ("ENTRADA"/"SALIDA") para que el dato
+ * sea legible en la base y sobreviva cambios de enumeración en el futuro.
  */
 public class Movimiento {
 
@@ -9,12 +13,17 @@ public class Movimiento {
     private int idProducto;
     private String tipo;
     private int cantidad;
-    private String usuario; // Idealmente el nombre de usuario (username)
+    private String usuario;
     private String fecha;
+    // Proveedor que entregó la mercancía en una ENTRADA (v4). 0 = sin proveedor;
+    // las salidas nunca lo usan, por eso no lleva clave foránea.
     private int idProveedor;
+    // Razón social resuelta del proveedor para mostrarla en el historial.
+    // Vacío cuando el movimiento no tiene proveedor (salidas y entradas sin él).
     private String razonSocialProveedor;
-
-    // Nuevos campos CU-04 / CU-05
+    // v8 (CU-04 / CU-05): documento que respalda el movimiento (guía, factura,
+    // vale) y motivo u observación. Cadena vacía cuando no se informaron o
+    // cuando la fila es anterior a la v8.
     private String documento;
     private String motivo;
 
@@ -23,7 +32,14 @@ public class Movimiento {
 
     public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
                       String usuario, String fecha, int idProveedor) {
-        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor, "", null, null);
+        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor, "", "", "");
+    }
+
+    public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
+                      String usuario, String fecha, int idProveedor,
+                      String razonSocialProveedor) {
+        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor,
+                razonSocialProveedor, "", "");
     }
 
     public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
@@ -129,8 +145,6 @@ public class Movimiento {
                 + ", cantidad=" + cantidad
                 + ", fecha='" + fecha + '\''
                 + ", idProveedor=" + idProveedor
-                + ", documento='" + getDocumento() + '\''
-                + ", motivo='" + getMotivo() + '\''
                 + ", razonSocialProveedor='" + getRazonSocialProveedor() + '\''
                 + "}";
     }
