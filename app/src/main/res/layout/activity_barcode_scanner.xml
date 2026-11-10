@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootBarcodeScanner"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarBarcodeScanner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#99000000"
+        app:title="@string/title_escaneo_codigo"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIconTint="@color/white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Área visual de lectura (retícula) -->
+    <View
+        android:id="@+id/viewReticula"
+        android:layout_width="280dp"
+        android:layout_height="200dp"
+        android:background="@drawable/bg_pill"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/tvInstruccionEscaneo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:text="@string/hint_escaneo_instruccion"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        app:layout_constraintTop_toBottomOf="@id/viewReticula"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Campo de simulación/escaneo manual fallback -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilCodigoSimulado"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginBottom="32dp"
+        app:boxBackgroundColor="#CC000000"
+        app:boxStrokeColor="@color/primary"
+        app:hintTextColor="@color/white"
+        app:startIconDrawable="@drawable/ic_barcode"
+        app:startIconTint="@color/white"
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/ic_check"
+        app:endIconTint="@color/primary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etCodigoManual"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Código de barras manual"
+            android:inputType="number"
+            android:imeOptions="actionSearch"
+            android:maxLines="1"
+            android:textColor="@color/white"
+            android:textColorHint="#AAAAAA" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
