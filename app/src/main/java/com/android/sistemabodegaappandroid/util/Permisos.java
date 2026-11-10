@@ -18,6 +18,7 @@ public final class Permisos {
     public static final String CATEGORIAS = "CATEGORIAS";
     public static final String PROVEEDORES = "PROVEEDORES";
     public static final String MOVIMIENTOS = "MOVIMIENTOS";
+    public static final String INFORMES = "INFORMES";
 
     private Permisos() {
     }

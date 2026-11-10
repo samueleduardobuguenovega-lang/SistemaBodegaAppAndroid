@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!--
         allowBackup=false: la sesión del usuario se guarda cifrada, pero un
         backup/restore de las preferencias permitía restaurar un rol de
@@ -60,6 +65,24 @@
         <activity
             android:name=".ProveedorFormActivity"
             android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.InformesActivity"
+            android:exported="false"
+            android:label="@string/title_informes"
+            android:parentActivityName=".MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.BarcodeScannerActivity"
+            android:exported="false"
+            android:label="@string/title_escaneo_codigo"
+            android:parentActivityName=".ProductosActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.UbicacionEmpresaActivity"
+            android:exported="false"
+            android:label="@string/title_ubicacion_empresa"
             android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustResize" />
     </application>

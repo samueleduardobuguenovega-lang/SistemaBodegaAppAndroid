@@ -192,4 +192,52 @@
     <string name="msg_acceso_admin_denegado">Su usuario no tiene permiso de Administrador para usar la administración de usuarios y roles</string>
     <!-- Guard de los módulos: el rol solo abre lo que tiene habilitado. -->
     <string name="msg_acceso_modulo_denegado">Su rol no tiene habilitado este módulo</string>
+
+    <!-- CU-06 / RF-19 / RF-22 / RF-21: Informes de Stock e Historial -->
+    <string name="title_informes">Informes y Reportes</string>
+    <string name="subtitle_informes">Estado actualizado de inventario y movimientos</string>
+    <string name="btn_admin_informes">Informes de Stock</string>
+    <string name="menu_desc_informes">Consulta existencias, productos críticos e historial</string>
+    <string name="tab_informe_stock">Informe de Stock</string>
+    <string name="tab_historial_movimientos">Historial de Movimientos</string>
+    <string name="filter_categoria_todas">Todas las categorías</string>
+    <string name="filter_estado_todos">Todos los estados</string>
+    <string name="filter_estado_ok">Disponible (OK)</string>
+    <string name="filter_estado_bajo">Stock Bajo / Crítico</string>
+    <string name="filter_estado_sin_stock">Sin Stock</string>
+    <string name="stat_total_productos">Productos</string>
+    <string name="stat_stock_total">Stock Total</string>
+    <string name="stat_stock_bajo">Stock Bajo</string>
+    <string name="stat_sin_stock">Sin Stock</string>
+    <string name="btn_exportar_informe">Exportar Informe</string>
+    <string name="empty_informes">No existen productos para los filtros seleccionados</string>
+    <string name="empty_historial_general">No se encontraron movimientos registrados</string>
+    <string name="reporte_exportado_titulo">Informe Generado</string>
+    <string name="reporte_exportado_mensaje">El informe de stock ha sido generado correctamente.</string>
+
+    <!-- CU-07 / RF-20: Búsqueda por Código de Barras -->
+    <string name="title_escaneo_codigo">Escáner Código de Barras</string>
+    <string name="hint_escaneo_instruccion">Enfoque el código de barras con la cámara</string>
+    <string name="btn_buscar_codigo">Escanear código</string>
+    <string name="msg_permiso_camara_denegado">Permiso de cámara denegado. Se habilita la búsqueda manual.</string>
+    <string name="msg_codigo_no_encontrado">Producto no encontrado para el código de barras escaneado</string>
+    <string name="msg_producto_inactivo_escaneado">El producto escaneado está deshabilitado</string>
+    <string name="dialog_title_producto_escaneado">Producto Encontrado</string>
+    <string name="btn_registrar_entrada">Registrar Entrada</string>
+    <string name="btn_registrar_salida">Registrar Salida</string>
+    <string name="btn_ver_detalle">Ver Detalle</string>
+
+    <!-- CU-08 / RF-24: Ubicación de la Empresa -->
+    <string name="title_ubicacion_empresa">Ubicación de la Empresa</string>
+    <string name="subtitle_ubicacion_empresa">Localización de Bodega Central</string>
+    <string name="btn_ubicacion_empresa">Ubicación de la Empresa</string>
+    <string name="menu_desc_ubicacion">Ver ubicación fija y ruta en Google Maps</string>
+    <string name="empresa_nombre">Bodega Central Express</string>
+    <string name="empresa_direccion">Av. Providencia 1234, Santiago, Chile</string>
+    <string name="empresa_contacto">Teléfono: +56 2 2999 8888 · Email: contacto@bodegaexpress.cl</string>
+    <string name="empresa_horario">Horario: Lunes a Viernes de 08:30 a 18:30 hrs.</string>
+    <string name="btn_abrir_google_maps">Abrir en Google Maps</string>
+    <string name="btn_como_llegar">Cómo llegar</string>
+    <string name="msg_permiso_ubicacion_denegado">Permiso de ubicación no otorgado. Se mantiene visible la ubicación fija de la empresa.</string>
+    <string name="msg_maps_no_disponible">No se pudo abrir la aplicación de mapas</string>
 </resources>

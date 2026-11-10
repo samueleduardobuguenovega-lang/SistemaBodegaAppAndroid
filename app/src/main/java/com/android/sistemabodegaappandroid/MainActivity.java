@@ -34,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
     private MaterialCardView btnAdminCategorias;
     private MaterialCardView btnAdminProductos;
     private MaterialCardView btnAdminProveedores;
+    private MaterialCardView btnAdminInformes;
+    private MaterialCardView btnUbicacionEmpresa;
     private MaterialButton btnLogout;
 
     @Override
@@ -63,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
         btnAdminCategorias = findViewById(R.id.btnAdminCategorias);
         btnAdminProductos = findViewById(R.id.btnAdminProductos);
         btnAdminProveedores = findViewById(R.id.btnAdminProveedores);
+        btnAdminInformes = findViewById(R.id.btnAdminInformes);
+        btnUbicacionEmpresa = findViewById(R.id.btnUbicacionEmpresa);
         btnLogout = findViewById(R.id.btnLogout);
 
         cargarDatosSesion();
@@ -81,13 +85,13 @@ public class MainActivity extends AppCompatActivity {
         // con su pantalla igual que los dos accesos anteriores.
         crearBotonesInventario();
 
-        // RF-27: el rol decide qué accesos ve el panel. Se aplica sobre las
-        // cuatro tarjetas, sin importar si vinieron del layout o se conectaron
-        // en código.
+        // RF-27: el rol decide qué accesos ve el panel.
         mostrarSegunPermiso(btnAdminUsersRoles, Permisos.USUARIOS);
         mostrarSegunPermiso(btnAdminCategorias, Permisos.CATEGORIAS);
         mostrarSegunPermiso(btnAdminProductos, Permisos.PRODUCTOS);
         mostrarSegunPermiso(btnAdminProveedores, Permisos.PROVEEDORES);
+        mostrarSegunPermiso(btnAdminInformes, Permisos.INFORMES);
+        btnUbicacionEmpresa.setVisibility(View.VISIBLE);
 
         btnLogout.setOnClickListener(v -> mostrarDialogoCerrarSesion());
 
@@ -97,6 +101,8 @@ public class MainActivity extends AppCompatActivity {
         aplicarFeedbackTactil(btnAdminCategorias);
         aplicarFeedbackTactil(btnAdminProductos);
         aplicarFeedbackTactil(btnAdminProveedores);
+        aplicarFeedbackTactil(btnAdminInformes);
+        aplicarFeedbackTactil(btnUbicacionEmpresa);
         animarEntradaTarjetas();
     }
 
@@ -105,12 +111,16 @@ public class MainActivity extends AppCompatActivity {
         vista.setVisibility(sessionManager.tienePermiso(permiso) ? View.VISIBLE : View.GONE);
     }
 
-    /** Conecta las tarjetas de productos y proveedores con su pantalla. */
+    /** Conecta las tarjetas de productos, proveedores, informes y ubicación con su pantalla. */
     private void crearBotonesInventario() {
         btnAdminProductos.setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, ProductosActivity.class)));
         btnAdminProveedores.setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, ProveedoresActivity.class)));
+        btnAdminInformes.setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, com.android.sistemabodegaappandroid.ui.InformesActivity.class)));
+        btnUbicacionEmpresa.setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, com.android.sistemabodegaappandroid.ui.UbicacionEmpresaActivity.class)));
     }
 
     /**
@@ -123,7 +133,9 @@ public class MainActivity extends AppCompatActivity {
                 btnAdminUsersRoles,
                 btnAdminCategorias,
                 btnAdminProductos,
-                btnAdminProveedores
+                btnAdminProveedores,
+                btnAdminInformes,
+                btnUbicacionEmpresa
         };
         long desfase = 0L;
         for (MaterialCardView tarjeta : tarjetas) {

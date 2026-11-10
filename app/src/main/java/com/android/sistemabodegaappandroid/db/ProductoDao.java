@@ -145,6 +145,71 @@ public class ProductoDao {
         return resultado.isEmpty() ? null : resultado.get(0);
     }
 
+    /** CU-07: busca un producto habilitado por su código de barras. */
+    public Producto getProductoByCodigoBarras(String codigoBarras) {
+        if (codigoBarras == null || codigoBarras.trim().isEmpty()) {
+            return null;
+        }
+        List<Producto> res = consultarProductos(SELECT_CON_JOINS
+                + " WHERE p." + DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS + " = ?"
+                + " AND p." + DatabaseHelper.COLUMN_PROD_ACTIVO + " = 1",
+                new String[]{codigoBarras.trim()});
+        return res.isEmpty() ? null : res.get(0);
+    }
+
+    /** CU-07: busca un producto (activo o inactivo) por código de barras. */
+    public Producto getProductoByCodigoBarrasIncluyendoInactivos(String codigoBarras) {
+        if (codigoBarras == null || codigoBarras.trim().isEmpty()) {
+            return null;
+        }
+        List<Producto> res = consultarProductos(SELECT_CON_JOINS
+                + " WHERE p." + DatabaseHelper.COLUMN_PROD_CODIGO_BARRAS + " = ?",
+                new String[]{codigoBarras.trim()});
+        return res.isEmpty() ? null : res.get(0);
+    }
+
+    /**
+     * RF-19 y RF-22 / CU-06: Consulta productos para el informe con filtros por categoría,
+     * estado de disponibilidad y texto de búsqueda.
+     */
+    public List<Producto> getInformeProductos(int idCategoria, String estadoStock, String textoBusqueda) {
+        StringBuilder sql = new StringBuilder(SELECT_CON_JOINS);
+        sql.append(" WHERE p.").append(DatabaseHelper.COLUMN_PROD_ACTIVO).append(" = 1");
+        List<String> args = new ArrayList<>();
+
+        if (idCategoria > 0) {
+            sql.append(" AND p.").append(DatabaseHelper.COLUMN_PROD_ID_CATEGORIA).append(" = ?");
+            args.add(String.valueOf(idCategoria));
+        }
+
+        if (estadoStock != null) {
+            String estado = estadoStock.trim().toUpperCase(Locale.ROOT);
+            if ("OK".equals(estado) || "DISPONIBLE".equals(estado)) {
+                sql.append(" AND p.").append(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL)
+                   .append(" > p.").append(DatabaseHelper.COLUMN_PROD_STOCK_MINIMO);
+            } else if ("BAJO".equals(estado) || "CRITICO".equals(estado)) {
+                sql.append(" AND p.").append(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL)
+                   .append(" <= p.").append(DatabaseHelper.COLUMN_PROD_STOCK_MINIMO)
+                   .append(" AND p.").append(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL).append(" > 0");
+            } else if ("SIN_STOCK".equals(estado) || "AGOTADO".equals(estado)) {
+                sql.append(" AND p.").append(DatabaseHelper.COLUMN_PROD_STOCK_ACTUAL).append(" = 0");
+            }
+        }
+
+        if (textoBusqueda != null && !textoBusqueda.trim().isEmpty()) {
+            sql.append(" AND (p.").append(DatabaseHelper.COLUMN_PROD_NOMBRE).append(" LIKE ?")
+               .append(" OR p.").append(DatabaseHelper.COLUMN_PROD_SKU).append(" LIKE ?)");
+            String patron = "%" + textoBusqueda.trim() + "%";
+            args.add(patron);
+            args.add(patron);
+        }
+
+        sql.append(" ORDER BY p.").append(DatabaseHelper.COLUMN_PROD_NOMBRE).append(" ASC");
+
+        String[] arrayArgs = args.isEmpty() ? null : args.toArray(new String[0]);
+        return consultarProductos(sql.toString(), arrayArgs);
+    }
+
     /**
      * RF-03: comprueba si el SKU ya pertenece a OTRO producto, sin filtrar por
      * {@code activo}.
@@ -440,6 +505,58 @@ public class ProductoDao {
             // solo que sin el proveedor de la entrada.
             return leerMovimientos(idProducto, false);
         }
+    }
+
+    /** RF-21: Historial de movimientos general (para todos los productos o filtrado por idProducto y tipo). */
+    public List<Movimiento> getHistorialMovimientosGeneral(int idProducto, String tipoMovimiento) {
+        List<Movimiento> list = new ArrayList<>();
+        SQLiteDatabase db = helper.getReadableDatabase();
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT m.").append(DatabaseHelper.COLUMN_MOV_ID)
+           .append(", m.").append(DatabaseHelper.COLUMN_MOV_ID_PRODUCTO)
+           .append(", m.").append(DatabaseHelper.COLUMN_MOV_TIPO)
+           .append(", m.").append(DatabaseHelper.COLUMN_MOV_CANTIDAD)
+           .append(", m.").append(DatabaseHelper.COLUMN_MOV_USUARIO)
+           .append(", m.").append(DatabaseHelper.COLUMN_MOV_FECHA)
+           .append(", m.").append(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR)
+           .append(", pr.").append(DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL)
+           .append(" FROM ").append(DatabaseHelper.TABLE_MOVIMIENTO).append(" m")
+           .append(" LEFT JOIN ").append(DatabaseHelper.TABLE_PROVEEDOR).append(" pr")
+           .append(" ON m.").append(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR)
+           .append(" = pr.").append(DatabaseHelper.COLUMN_PROV_ID)
+           .append(" WHERE 1=1");
+
+        List<String> args = new ArrayList<>();
+        if (idProducto > 0) {
+            sql.append(" AND m.").append(DatabaseHelper.COLUMN_MOV_ID_PRODUCTO).append(" = ?");
+            args.add(String.valueOf(idProducto));
+        }
+        if (tipoMovimiento != null && !tipoMovimiento.trim().isEmpty() && !"TODOS".equalsIgnoreCase(tipoMovimiento.trim())) {
+            sql.append(" AND UPPER(m.").append(DatabaseHelper.COLUMN_MOV_TIPO).append(") = ?");
+            args.add(tipoMovimiento.trim().toUpperCase(Locale.ROOT));
+        }
+        sql.append(" ORDER BY m.").append(DatabaseHelper.COLUMN_MOV_FECHA).append(" DESC LIMIT 200");
+
+        Cursor cursor = db.rawQuery(sql.toString(), args.isEmpty() ? null : args.toArray(new String[0]));
+        int indProv = cursor.getColumnIndex(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR);
+        int indRazon = cursor.getColumnIndex(DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL);
+
+        if (cursor.moveToFirst()) {
+            do {
+                Movimiento mov = new Movimiento(
+                        cursor.getInt(0),
+                        cursor.getInt(1),
+                        cursor.getString(2),
+                        cursor.getInt(3),
+                        cursor.getString(4),
+                        cursor.getString(5),
+                        indProv >= 0 ? cursor.getInt(indProv) : 0,
+                        (indRazon >= 0 && !cursor.isNull(indRazon)) ? cursor.getString(indRazon) : "");
+                list.add(mov);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        return list;
     }
 
     /**

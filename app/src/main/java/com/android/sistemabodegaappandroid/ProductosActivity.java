@@ -72,8 +72,14 @@ public class ProductosActivity extends AppCompatActivity {
         ivVacioProductos = findViewById(R.id.ivVacioProductos);
         switchVerInactivos = findViewById(R.id.switchVerInactivos);
         TextInputEditText etBuscar = findViewById(R.id.etBuscarProducto);
+        com.google.android.material.textfield.TextInputLayout tilBuscar = findViewById(R.id.tilBuscarProducto);
         MaterialToolbar toolbar = findViewById(R.id.toolbarProductos);
         FloatingActionButton fabAgregar = findViewById(R.id.fabAgregarProducto);
+
+        if (tilBuscar != null) {
+            tilBuscar.setEndIconOnClickListener(v ->
+                    startActivity(new Intent(ProductosActivity.this, com.android.sistemabodegaappandroid.ui.BarcodeScannerActivity.class)));
+        }
 
         // Navegación: la flecha del toolbar vuelve al panel principal.
         if (toolbar != null) {

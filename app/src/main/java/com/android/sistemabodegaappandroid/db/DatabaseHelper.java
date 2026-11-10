@@ -476,8 +476,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * @param db base en la que ya se agrego la columna.
      */
     private void rellenarPermisosDeRolesExistentes(SQLiteDatabase db) {
-        String todos = "USUARIOS,PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS";
-        String inventario = "PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS";
+        String todos = "USUARIOS,PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS,INFORMES";
+        String inventario = "PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS,INFORMES";
         String sinPermisos = " AND (" + COLUMN_ROL_PERMISOS + " IS NULL"
                 + " OR TRIM(" + COLUMN_ROL_PERMISOS + ") = '')";
         db.execSQL("UPDATE " + TABLE_ROL + " SET " + COLUMN_ROL_PERMISOS + " = ?"
@@ -529,13 +529,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         ContentValues cvAdminRol = new ContentValues();
         cvAdminRol.put(COLUMN_ROL_NOMBRE, "Administrador");
         cvAdminRol.put(COLUMN_ROL_DESCRIPCION, "Acceso total al sistema");
-        cvAdminRol.put(COLUMN_ROL_PERMISOS, "USUARIOS,PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS");
+        cvAdminRol.put(COLUMN_ROL_PERMISOS, "USUARIOS,PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS,INFORMES");
         long adminRolId = db.insert(TABLE_ROL, null, cvAdminRol);
 
         ContentValues cvOperadorRol = new ContentValues();
         cvOperadorRol.put(COLUMN_ROL_NOMBRE, "Operador");
         cvOperadorRol.put(COLUMN_ROL_DESCRIPCION, "Acceso a operaciones de bodega");
-        cvOperadorRol.put(COLUMN_ROL_PERMISOS, "PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS");
+        cvOperadorRol.put(COLUMN_ROL_PERMISOS, "PRODUCTOS,CATEGORIAS,PROVEEDORES,MOVIMIENTOS,INFORMES");
         db.insert(TABLE_ROL, null, cvOperadorRol);
 
         ContentValues cvVendedorRol = new ContentValues();

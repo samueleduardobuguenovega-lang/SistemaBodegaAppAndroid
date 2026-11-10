@@ -90,6 +90,10 @@
         app:hintTextColor="@color/primary"
         app:startIconDrawable="@drawable/ic_search"
         app:startIconTint="@color/text_secondary"
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/ic_barcode"
+        app:endIconTint="@color/primary"
+        app:endIconContentDescription="@string/btn_buscar_codigo"
         app:layout_constraintTop_toBottomOf="@id/tvSubtituloProductos"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
