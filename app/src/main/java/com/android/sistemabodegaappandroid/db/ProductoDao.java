@@ -51,6 +51,15 @@ public class ProductoDao {
      */
     private static final int LIMITE_BUSQUEDA = 200;
 
+    /**
+     * Documento y motivo con los que queda auditado el stock de apertura de un
+     * producto nuevo (CU-04). Son constantes y no texto libre porque el alta
+     * todavía no tiene un diálogo de movimiento: el stock inicial entra como
+     * ENTRADA y necesita una constancia legible en el historial.
+     */
+    static final String DOCUMENTO_STOCK_INICIAL = "INVENTARIO INICIAL";
+    static final String MOTIVO_STOCK_INICIAL = "Stock de apertura";
+
     private final DatabaseHelper helper;
 
     public ProductoDao(DatabaseHelper helper) {
@@ -109,7 +118,13 @@ public class ProductoDao {
                 + " LIMIT " + LIMITE_BUSQUEDA, null);
     }
 
-    /** Listado de productos deshabilitados (baja lógica, activo = 0), ordenado alfabéticamente y acotado. */
+    /**
+     * RF-08: listado de productos deshabilitados ({@code activo = 0}), ordenado
+     * alfabéticamente y acotado. La baja lógica no borra la fila, así que estos
+     * productos siguen existiendo y su historial de movimientos sigue siendo
+     * auditable: la pantalla de productos los muestra con el interruptor de
+     * "ver deshabilitados" y permite reactivarlos.
+     */
     public List<Producto> getProductosInactivos() {
         return consultarProductos(SELECT_CON_JOINS
                 + " WHERE p." + DatabaseHelper.COLUMN_PROD_ACTIVO + " = 0"
@@ -131,6 +146,31 @@ public class ProductoDao {
                 + " WHERE (p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " LIKE ?"
                 + " OR p." + DatabaseHelper.COLUMN_PROD_SKU + " LIKE ?)"
                 + " AND p." + DatabaseHelper.COLUMN_PROD_ACTIVO + " = 1"
+                + " ORDER BY p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " ASC"
+                + " LIMIT " + LIMITE_BUSQUEDA,
+                new String[]{patron, patron});
+    }
+
+    /**
+     * RF-08: búsqueda por nombre o SKU entre los productos deshabilitados
+     * ({@code activo = 0}), con el mismo criterio y el mismo tope que
+     * {@link #buscarProductos(String)}.
+     *
+     * El filtro se resuelve en SQL y no en la interfaz: la pantalla no tiene por
+     * qué traerse todo el catálogo inactivo para descartarlo en memoria, y
+     * {@code LIKE} con tope mantiene el costo acotado aunque la tabla crezca.
+     *
+     * @param texto texto de nombre o SKU; null o vacío lista todos los inactivos.
+     */
+    public List<Producto> buscarProductosInactivos(String texto) {
+        if (texto == null || texto.trim().isEmpty()) {
+            return getProductosInactivos();
+        }
+        String patron = "%" + texto.trim() + "%";
+        return consultarProductos(SELECT_CON_JOINS
+                + " WHERE (p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " LIKE ?"
+                + " OR p." + DatabaseHelper.COLUMN_PROD_SKU + " LIKE ?)"
+                + " AND p." + DatabaseHelper.COLUMN_PROD_ACTIVO + " = 0"
                 + " ORDER BY p." + DatabaseHelper.COLUMN_PROD_NOMBRE + " ASC"
                 + " LIMIT " + LIMITE_BUSQUEDA,
                 new String[]{patron, patron});
@@ -331,7 +371,8 @@ public class ProductoDao {
             }
             if (stockInicial > 0
                     && !aplicarMovimientoEnTransaccionAbierta(db, (int) id, stockInicial,
-                            TipoMovimiento.ENTRADA, usuario, idProveedor)) {
+                            TipoMovimiento.ENTRADA, usuario, idProveedor,
+                            DOCUMENTO_STOCK_INICIAL, MOTIVO_STOCK_INICIAL)) {
                 // Sin setTransactionSuccessful() el INSERT del producto revierte.
                 return -1;
             }
@@ -411,7 +452,7 @@ public class ProductoDao {
      * sobrecarga completa con idProveedor = 0.
      */
     public boolean actualizarStock(int idProducto, int cantidad, TipoMovimiento tipo, String usuario) {
-        return actualizarStock(idProducto, cantidad, tipo, usuario, 0);
+        return actualizarStock(idProducto, cantidad, tipo, usuario, 0, "", "");
     }
 
     /**
@@ -428,13 +469,31 @@ public class ProductoDao {
      * @return true si el stock y el MOVIMIENTO quedaron registrados.
      */
     public boolean actualizarStock(int idProducto, int cantidad, TipoMovimiento tipo, String usuario, int idProveedor) {
+        return actualizarStock(idProducto, cantidad, tipo, usuario, idProveedor, "", "");
+    }
+
+    /**
+     * Movimiento de stock con la constancia documental de CU-04 / CU-05: además
+     * del proveedor de la entrada, el movimiento guarda el documento (guía,
+     * factura o vale) y el motivo (compra, venta, merma, devolución).
+     *
+     * Las sobrecargas de arriba delegan aquí con documento y motivo vacíos, de
+     * modo que ningún llamador anterior cambia de comportamiento y el historial
+     * viejo se lee igual.
+     *
+     * @param documento número de documento asociado; null o vacío se guarda "".
+     * @param motivo    motivo u observación del movimiento; idem.
+     */
+    public boolean actualizarStock(int idProducto, int cantidad, TipoMovimiento tipo, String usuario,
+                                   int idProveedor, String documento, String motivo) {
         if (tipo == null || cantidad <= 0) {
             return false;
         }
         SQLiteDatabase db = helper.getWritableDatabase();
         db.beginTransaction();
         try {
-            if (!aplicarMovimientoEnTransaccionAbierta(db, idProducto, cantidad, tipo, usuario, idProveedor)) {
+            if (!aplicarMovimientoEnTransaccionAbierta(db, idProducto, cantidad, tipo, usuario,
+                    idProveedor, documento, motivo)) {
                 return false;
             }
             db.setTransactionSuccessful();
@@ -451,7 +510,8 @@ public class ProductoDao {
      */
     private boolean aplicarMovimientoEnTransaccionAbierta(SQLiteDatabase db, int idProducto,
                                                           int cantidad, TipoMovimiento tipo,
-                                                          String usuario, int idProveedor) {
+                                                          String usuario, int idProveedor,
+                                                          String documento, String motivo) {
         if (tipo == null || cantidad <= 0) {
             return false;
         }
@@ -486,6 +546,11 @@ public class ProductoDao {
         cvMov.put(DatabaseHelper.COLUMN_MOV_CANTIDAD, cantidad);
         cvMov.put(DatabaseHelper.COLUMN_MOV_USUARIO, usuario != null ? usuario : "");
         cvMov.put(DatabaseHelper.COLUMN_MOV_FECHA, fechaActual());
+        // v8: la constancia documental del movimiento. Vacío se guarda como ""
+        // y no como NULL para que el historial no tenga que distinguir ausencia
+        // de texto: la fila vieja (NULL) ya la traduce el modelo a "".
+        cvMov.put(DatabaseHelper.COLUMN_MOV_DOCUMENTO, documento != null ? documento.trim() : "");
+        cvMov.put(DatabaseHelper.COLUMN_MOV_MOTIVO, motivo != null ? motivo.trim() : "");
         // Solo la entrada registra proveedor; 0 o negativo se guarda como NULL.
         if (idProveedor > 0) {
             cvMov.put(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR, idProveedor);
@@ -499,11 +564,16 @@ public class ProductoDao {
     /** Historial de movimientos de un producto, del más reciente al más antiguo. */
     public List<Movimiento> getMovimientosByProducto(int idProducto) {
         try {
-            return leerMovimientos(idProducto, true);
+            return leerMovimientos(idProducto, true, true);
         } catch (android.database.SQLException columnaSinMigrar) {
-            // Base que aún no migró a v4: el historial sigue siendo consultable,
-            // solo que sin el proveedor de la entrada.
-            return leerMovimientos(idProducto, false);
+            // Base que aún no migró a v8: el historial sigue siendo consultable,
+            // solo que sin documento ni motivo.
+            try {
+                return leerMovimientos(idProducto, true, false);
+            } catch (android.database.SQLException sinProveedor) {
+                // Base que aún no migró a v4: queda el historial sin proveedor.
+                return leerMovimientos(idProducto, false, false);
+            }
         }
     }
 
@@ -560,13 +630,17 @@ public class ProductoDao {
     }
 
     /**
-     * Lee el historial; conProveedor=false omite la columna agregada en v4.
+     * Lee el historial. Los dos interruptores degradan la consulta a esquemas
+     * anteriores: conProveedor=false omite la columna agregada en v4 y
+     * conNuevosCampos=false las de la v8, para que una base sin migrar no deje
+     * la pantalla sin historial.
      *
      * La entrada con proveedor se resuelve con un LEFT JOIN a PROVEEDOR para
      * mostrar la razón social en el historial: los movimientos sin proveedor
      * quedan con el nombre vacío, sin romper la lectura.
      */
-    private List<Movimiento> leerMovimientos(int idProducto, boolean conProveedor) {
+    private List<Movimiento> leerMovimientos(int idProducto, boolean conProveedor,
+                                             boolean conNuevosCampos) {
         List<Movimiento> list = new ArrayList<>();
         SQLiteDatabase db = helper.getReadableDatabase();
         // Los alias "m" y "pr" son necesarios: id_proveedor existe en ambas
@@ -581,6 +655,10 @@ public class ProductoDao {
                         ? ", m." + DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR
                                 + ", pr." + DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL
                         : "")
+                + (conNuevosCampos
+                        ? ", m." + DatabaseHelper.COLUMN_MOV_DOCUMENTO
+                                + ", m." + DatabaseHelper.COLUMN_MOV_MOTIVO
+                        : "")
                 + " FROM " + DatabaseHelper.TABLE_MOVIMIENTO + " m"
                 + (conProveedor
                         ? " LEFT JOIN " + DatabaseHelper.TABLE_PROVEEDOR + " pr"
@@ -593,6 +671,8 @@ public class ProductoDao {
         // Si la columna no está, getColumnIndex devuelve -1 y el id queda en 0.
         int indiceProveedor = cursor.getColumnIndex(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR);
         int indiceRazonSocial = cursor.getColumnIndex(DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL);
+        int indiceDocumento = cursor.getColumnIndex(DatabaseHelper.COLUMN_MOV_DOCUMENTO);
+        int indiceMotivo = cursor.getColumnIndex(DatabaseHelper.COLUMN_MOV_MOTIVO);
         if (cursor.moveToFirst()) {
             do {
                 Movimiento movimiento = new Movimiento(
@@ -606,7 +686,13 @@ public class ProductoDao {
                         // El LEFT JOIN deja NULL cuando no hubo proveedor: nunca
                         // se muestra "null" en el historial.
                         (indiceRazonSocial >= 0 && !cursor.isNull(indiceRazonSocial))
-                                ? cursor.getString(indiceRazonSocial) : "");
+                                ? cursor.getString(indiceRazonSocial) : "",
+                        // Las filas anteriores a la v8 quedan con NULL: el
+                        // modelo las normaliza a cadena vacía.
+                        (indiceDocumento >= 0 && !cursor.isNull(indiceDocumento))
+                                ? cursor.getString(indiceDocumento) : "",
+                        (indiceMotivo >= 0 && !cursor.isNull(indiceMotivo))
+                                ? cursor.getString(indiceMotivo) : "");
                 list.add(movimiento);
             } while (cursor.moveToNext());
         }

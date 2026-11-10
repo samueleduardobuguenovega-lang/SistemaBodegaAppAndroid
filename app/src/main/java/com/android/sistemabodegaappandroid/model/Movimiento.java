@@ -21,18 +21,30 @@ public class Movimiento {
     // Razón social resuelta del proveedor para mostrarla en el historial.
     // Vacío cuando el movimiento no tiene proveedor (salidas y entradas sin él).
     private String razonSocialProveedor;
+    // v8 (CU-04 / CU-05): documento que respalda el movimiento (guía, factura,
+    // vale) y motivo u observación. Cadena vacía cuando no se informaron o
+    // cuando la fila es anterior a la v8.
+    private String documento;
+    private String motivo;
 
     public Movimiento() {
     }
 
     public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
                       String usuario, String fecha, int idProveedor) {
-        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor, "");
+        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor, "", "", "");
     }
 
     public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
                       String usuario, String fecha, int idProveedor,
                       String razonSocialProveedor) {
+        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor,
+                razonSocialProveedor, "", "");
+    }
+
+    public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
+                      String usuario, String fecha, int idProveedor,
+                      String razonSocialProveedor, String documento, String motivo) {
         this.idMovimiento = idMovimiento;
         this.idProducto = idProducto;
         this.tipo = tipo;
@@ -41,6 +53,8 @@ public class Movimiento {
         this.fecha = fecha;
         this.idProveedor = idProveedor;
         this.razonSocialProveedor = razonSocialProveedor != null ? razonSocialProveedor : "";
+        this.documento = documento != null ? documento : "";
+        this.motivo = motivo != null ? motivo : "";
     }
 
     public int getIdMovimiento() {
@@ -105,6 +119,22 @@ public class Movimiento {
 
     public void setRazonSocialProveedor(String razonSocialProveedor) {
         this.razonSocialProveedor = razonSocialProveedor != null ? razonSocialProveedor : "";
+    }
+
+    public String getDocumento() {
+        return documento != null ? documento : "";
+    }
+
+    public void setDocumento(String documento) {
+        this.documento = documento != null ? documento : "";
+    }
+
+    public String getMotivo() {
+        return motivo != null ? motivo : "";
+    }
+
+    public void setMotivo(String motivo) {
+        this.motivo = motivo != null ? motivo : "";
     }
 
     @Override

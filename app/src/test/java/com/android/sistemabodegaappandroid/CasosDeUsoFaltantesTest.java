@@ -28,15 +28,19 @@ public class CasosDeUsoFaltantesTest {
 
     // --- RF-08: baja lógica de productos ---
 
-    /** v5 existe justamente para esta columna de permisos; sin ella el esquema no cambió. */
+    /**
+     * La BD está en la versión 8: v6 agregó codigo_barras y unidad_medida a
+     * PRODUCTO (CU-03), v7 suma los índices y las fechas en formato ordenable y
+     * v8 el documento y el motivo de cada movimiento (CU-04 / CU-05), todo con
+     * migración incremental sobre los datos existentes.
+     */
     @Test
-    /** La BD está en la versión 7: v6 agregó codigo_barras y unidad_medida a
-     *  PRODUCTO (CU-03) y v7 suma los índices y las fechas en formato
-     *  ordenable, todo con migración incremental sobre los datos existentes. */
-    public void databaseVersionSiete() throws IOException {
+    public void databaseVersionOcho() throws IOException {
         String fuente = leer("DatabaseHelper.java");
-        assertTrue("DATABASE_VERSION debe valer 7",
-                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*7\\s*;.*"));
+        assertTrue("DATABASE_VERSION debe valer 8",
+                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*8\\s*;.*"));
+        assertTrue("La migración debe cubrir el paso a la versión 8",
+                fuente.contains("oldVersion < 8"));
     }
 
     /** La migración v4 debe usar ALTER TABLE incremental, nunca DROP TABLE. */
@@ -114,9 +118,13 @@ public class CasosDeUsoFaltantesTest {
                 dialogo.contains("spinnerProveedorMovimiento"));
         assertTrue("El selector debe vivir en un contenedor ocultable",
                 dialogo.contains("contenedorProveedorMovimiento"));
-        String activity = leer("ProductoFormActivity.java");
-        assertTrue("La actividad debe alternar la visibilidad según el tipo",
-                activity.contains("contenedorProveedorMovimiento"));
+        // La visibilidad la alterna la implementación única del diálogo: el
+        // formulario ya no tiene su propia copia del código.
+        String implementacion = leer("MovimientoStockDialog.java");
+        assertTrue("El diálogo debe alternar la visibilidad según el tipo",
+                implementacion.contains("contenedorProveedorMovimiento"));
+        assertTrue("La entrada debe resolver el proveedor elegido",
+                implementacion.contains("idProveedorElegido"));
     }
 
     // --- CU-01, flujo alternativo 4a ---

@@ -110,13 +110,16 @@
             android:textColorHint="@color/text_placeholder"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <Switch
+    <!-- RF-08: alterna entre el catálogo activo y los productos dados de baja
+         lógica. Se usa MaterialSwitch para no mezclar el interruptor del sistema
+         con el resto de la interfaz Expressive. -->
+    <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchVerInactivos"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="8dp"
-        android:text="Ver deshabilitados"
+        android:text="@string/label_ver_deshabilitados"
         android:textSize="14sp"
         android:minHeight="48dp"
         app:layout_constraintTop_toBottomOf="@id/tilBuscarProducto"

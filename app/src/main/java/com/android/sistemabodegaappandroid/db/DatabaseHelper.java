@@ -31,7 +31,12 @@ import java.util.concurrent.Executors;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "sistema_bodega.db";
-    private static final int DATABASE_VERSION = 7; // 7: índices + fechas de MOVIMIENTO ordenables
+    /**
+     * Versión del esquema. Cada salto está documentado en {@link #onUpgrade}:
+     * v7 sumó índices y fechas ordenables; v8 suma el documento y el motivo de
+     * cada movimiento (CU-04 / CU-05).
+     */
+    private static final int DATABASE_VERSION = 8;
 
     /** Etiqueta de los registros de log del helper (fallos de migración, etc.). */
     private static final String TAG = "DatabaseHelper";
@@ -110,6 +115,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // tienen uno, y sin clave foránea a propósito: el proveedor histórico no
     // debe bloquear un movimiento viejo si luego se deshabilita o se borra.
     public static final String COLUMN_MOV_ID_PROVEEDOR = "id_proveedor";
+    // v8: constancia documental del movimiento. El documento (número de guía,
+    // factura o vale) y el motivo describen POR QUÉ se movió el stock; son
+    // nullable porque una entrada sin documento sigue siendo válida, y las
+    // filas anteriores a la v8 quedan en NULL.
+    public static final String COLUMN_MOV_DOCUMENTO = "documento";
+    public static final String COLUMN_MOV_MOTIVO = "motivo";
 
     /**
      * SQL de creación de las tres tablas del módulo de inventario.
@@ -151,6 +162,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + COLUMN_MOV_USUARIO + " TEXT, "
                     + COLUMN_MOV_FECHA + " TEXT NOT NULL, "
                     + COLUMN_MOV_ID_PROVEEDOR + " INTEGER, "
+                    + COLUMN_MOV_DOCUMENTO + " TEXT, "
+                    + COLUMN_MOV_MOTIVO + " TEXT, "
                     + "FOREIGN KEY (" + COLUMN_MOV_ID_PRODUCTO + ") REFERENCES " + TABLE_PRODUCTO + "(" + COLUMN_PROD_ID + ")"
                     + ");"
     };
@@ -314,6 +327,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // existe cuando el paso anterior ya corrió.
             crearIndices(db);
             normalizarFechasDeMovimiento(db);
+        }
+        if (oldVersion < 8) {
+            // v8: documento y motivo en el historial (CU-04 / CU-05). Van con
+            // ALTER TABLE incremental y no con DROP: los movimientos ya
+            // registrados son la auditoría del inventario y no se pierden al
+            // actualizar la app. Ambas columnas son nullable, así que las filas
+            // viejas quedan legítimamente sin documento ni motivo.
+            agregarColumnaSiFalta(db, TABLE_MOVIMIENTO, COLUMN_MOV_DOCUMENTO,
+                    "ALTER TABLE " + TABLE_MOVIMIENTO
+                            + " ADD COLUMN " + COLUMN_MOV_DOCUMENTO + " TEXT",
+                    "v8: MOVIMIENTO." + COLUMN_MOV_DOCUMENTO);
+            agregarColumnaSiFalta(db, TABLE_MOVIMIENTO, COLUMN_MOV_MOTIVO,
+                    "ALTER TABLE " + TABLE_MOVIMIENTO
+                            + " ADD COLUMN " + COLUMN_MOV_MOTIVO + " TEXT",
+                    "v8: MOVIMIENTO." + COLUMN_MOV_MOTIVO);
         }
     }
 
@@ -1006,6 +1034,41 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         final String texto = filtro;
         productoExecutor.execute(() ->
                 destino.postValue(productoDaoReactivo.buscarProductos(texto)));
+    }
+
+    /** Cache LiveData de los productos deshabilitados (RF-08, baja lógica). */
+    private MutableLiveData<List<Producto>> productosInactivos;
+
+    /**
+     * RF-08: expone los productos con {@code activo = 0} como LiveData, con el
+     * mismo camino que el catálogo activo. El filtro por nombre o SKU lo aplica
+     * el DAO en SQL, no la interfaz en memoria.
+     *
+     * @param filtro texto de nombre o SKU; null o vacío lista todos los inactivos.
+     * @return LiveData con los productos deshabilitados, siempre la misma instancia.
+     */
+    public LiveData<List<Producto>> observarProductosInactivos(String filtro) {
+        if (productosInactivos == null) {
+            productosInactivos = new MutableLiveData<>();
+            refrescarProductosInactivos(filtro);
+        }
+        return productosInactivos;
+    }
+
+    /**
+     * Vuelve a consultar los productos deshabilitados. Igual que el catálogo
+     * activo, la consulta corre en el executor: la lista de inactivos no puede
+     * bloquear el hilo principal al abrir la pantalla ni al escribir en el
+     * buscador.
+     */
+    public void refrescarProductosInactivos(String filtro) {
+        final MutableLiveData<List<Producto>> destino = productosInactivos;
+        if (destino == null) {
+            return;
+        }
+        final String texto = filtro;
+        productoExecutor.execute(() ->
+                destino.postValue(productoDaoReactivo.buscarProductosInactivos(texto)));
     }
 
     // ---------------------------------------------------------------------

@@ -114,17 +114,25 @@ public class Fase0Test {
         assertTrue("actualizarStock debe cerrar la transacción",
                 movimiento.contains("endTransaction()"));
 
-        assertTrue("El diálogo de movimientos debe seguir registrando por actualizarStock",
-                leer("ProductoFormActivity.java").contains("productoDao.actualizarStock("));
+        assertTrue("El diálogo unificado de movimientos debe registrar por actualizarStock",
+                leer("MovimientoStockDialog.java").contains("productoDao.actualizarStock("));
+        assertTrue("El formulario del producto debe usar el diálogo unificado",
+                leer("ProductoFormActivity.java").contains("MovimientoStockDialog.mostrar("));
     }
 
-    /** v7: índices + fechas de MOVIMIENTO en formato ordenable. */    @Test
-    public void dbVersionSiete() throws IOException {
+    /**
+     * v8: documento y motivo en MOVIMIENTO (CU-04 / CU-05). El paso v7 sigue
+     * existiendo y no se puede perder al subir la versión.
+     */
+    @Test
+    public void dbVersionOcho() throws IOException {
         String helper = leer("DatabaseHelper.java");
-        assertTrue("La base debe estar en la versión 7",
-                helper.matches("(?s).*DATABASE_VERSION\\s*=\\s*7\\s*;.*"));
+        assertTrue("La base debe estar en la versión 8",
+                helper.matches("(?s).*DATABASE_VERSION\\s*=\\s*8\\s*;.*"));
         assertTrue("La migración debe cubrir el paso a la versión 7",
                 helper.contains("oldVersion < 7"));
+        assertTrue("La migración debe cubrir el paso a la versión 8",
+                helper.contains("oldVersion < 8"));
     }
 
     // --- helpers ---
