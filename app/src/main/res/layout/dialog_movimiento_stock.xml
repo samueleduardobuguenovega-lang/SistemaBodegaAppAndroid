@@ -92,4 +92,38 @@
             android:textColorHint="@color/text_placeholder"/>
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- NUEVO: Campo para Documento (Opcional para Entradas) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilDocumentoMovimiento"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="N° Documento / Guía (Opcional)">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDocumentoMovimiento"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="@color/text_primary"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- NUEVO: Campo para Motivo / Observación / Destinatario -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilMotivoMovimiento"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Motivo / Destinatario / Observación">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etMotivoMovimiento"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine"
+            android:textColor="@color/text_primary"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
 </LinearLayout>

@@ -2,10 +2,6 @@ package com.android.sistemabodegaappandroid.model;
 
 /**
  * Registro de entrada o salida de stock de un producto.
- *
- * Se guarda como POJO plano para leerlo con Cursor directamente, sin Room.
- * El campo "tipo" persiste como texto ("ENTRADA"/"SALIDA") para que el dato
- * sea legible en la base y sobreviva cambios de enumeración en el futuro.
  */
 public class Movimiento {
 
@@ -13,26 +9,26 @@ public class Movimiento {
     private int idProducto;
     private String tipo;
     private int cantidad;
-    private String usuario;
+    private String usuario; // Idealmente el nombre de usuario (username)
     private String fecha;
-    // Proveedor que entregó la mercancía en una ENTRADA (v4). 0 = sin proveedor;
-    // las salidas nunca lo usan, por eso no lleva clave foránea.
     private int idProveedor;
-    // Razón social resuelta del proveedor para mostrarla en el historial.
-    // Vacío cuando el movimiento no tiene proveedor (salidas y entradas sin él).
     private String razonSocialProveedor;
+
+    // Nuevos campos CU-04 / CU-05
+    private String documento;
+    private String motivo;
 
     public Movimiento() {
     }
 
     public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
                       String usuario, String fecha, int idProveedor) {
-        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor, "");
+        this(idMovimiento, idProducto, tipo, cantidad, usuario, fecha, idProveedor, "", null, null);
     }
 
     public Movimiento(int idMovimiento, int idProducto, String tipo, int cantidad,
                       String usuario, String fecha, int idProveedor,
-                      String razonSocialProveedor) {
+                      String razonSocialProveedor, String documento, String motivo) {
         this.idMovimiento = idMovimiento;
         this.idProducto = idProducto;
         this.tipo = tipo;
@@ -41,6 +37,8 @@ public class Movimiento {
         this.fecha = fecha;
         this.idProveedor = idProveedor;
         this.razonSocialProveedor = razonSocialProveedor != null ? razonSocialProveedor : "";
+        this.documento = documento != null ? documento : "";
+        this.motivo = motivo != null ? motivo : "";
     }
 
     public int getIdMovimiento() {
@@ -107,6 +105,22 @@ public class Movimiento {
         this.razonSocialProveedor = razonSocialProveedor != null ? razonSocialProveedor : "";
     }
 
+    public String getDocumento() {
+        return documento != null ? documento : "";
+    }
+
+    public void setDocumento(String documento) {
+        this.documento = documento != null ? documento : "";
+    }
+
+    public String getMotivo() {
+        return motivo != null ? motivo : "";
+    }
+
+    public void setMotivo(String motivo) {
+        this.motivo = motivo != null ? motivo : "";
+    }
+
     @Override
     public String toString() {
         return "Movimiento{idMovimiento=" + idMovimiento
@@ -115,6 +129,8 @@ public class Movimiento {
                 + ", cantidad=" + cantidad
                 + ", fecha='" + fecha + '\''
                 + ", idProveedor=" + idProveedor
+                + ", documento='" + getDocumento() + '\''
+                + ", motivo='" + getMotivo() + '\''
                 + ", razonSocialProveedor='" + getRazonSocialProveedor() + '\''
                 + "}";
     }
