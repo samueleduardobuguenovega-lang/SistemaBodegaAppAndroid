@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tokens de forma y tamaño. Todo lo que se repite en la app sale de acá:
+     un solo radio por familia de componente, una sola altura por tipo de control. -->
+<resources>
+    <!-- Radios -->
+    <dimen name="radio_tarjeta">16dp</dimen>
+    <dimen name="radio_control">12dp</dimen>
+    <dimen name="radio_pildora">26dp</dimen>
+
+    <!-- Alturas de control -->
+    <dimen name="alto_boton">54dp</dimen>
+    <dimen name="alto_filtro">52dp</dimen>
+    <dimen name="alto_campo">56dp</dimen>
+
+    <!-- Espaciado -->
+    <dimen name="margen_pantalla">16dp</dimen>
+    <dimen name="separacion_bloque">12dp</dimen>
+</resources>

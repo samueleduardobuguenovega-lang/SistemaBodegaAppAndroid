@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Transición de entrada única para toda la app: sin rebotes ni deslizamientos.
+     Una sola animación consistente se lee como sistema; cinco distintas, como ruido. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_slow_in">
+    <alpha android:fromAlpha="0.0" android:toAlpha="1.0" android:duration="180" />
+</set>

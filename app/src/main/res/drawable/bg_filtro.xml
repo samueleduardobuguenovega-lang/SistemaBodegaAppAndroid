@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo único para los filtros: superficie blanca con borde. El verde queda
+     reservado para el semáforo de stock, no para un control de formulario. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/surface" />
+    <corners android:radius="@dimen/radio_control" />
+    <stroke android:width="1dp" android:color="@color/outline" />
+</shape>
