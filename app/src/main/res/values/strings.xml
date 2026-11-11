@@ -51,6 +51,7 @@
     <string name="hint_select_role">Seleccione un Rol</string>
     <string name="switch_activo">Usuario Activo</string>
     <string name="save">Guardar</string>
+    <string name="aceptar">Aceptar</string>
     <string name="cancel">Cancelar</string>
 
     <!-- CU-10: Consultar y seleccionar categorías -->
@@ -236,6 +237,7 @@
     <string name="reporte_exportado_mensaje">El informe de stock ha sido generado correctamente.</string>
 
     <!-- CU-07 / RF-20: Búsqueda por Código de Barras -->
+    <string name="hint_codigo_manual">Código de barras manual</string>
     <string name="title_escaneo_codigo">Escáner Código de Barras</string>
     <string name="hint_escaneo_instruccion">Enfoque el código de barras con la cámara</string>
     <string name="btn_buscar_codigo">Escanear código</string>

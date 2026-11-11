@@ -28,6 +28,9 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.journeyapps.barcodescanner.BarcodeCallback;
+import com.journeyapps.barcodescanner.BarcodeResult;
+import com.journeyapps.barcodescanner.DecoratedBarcodeView;
 
 /**
  * Escáner de Código de Barras utilizando la Cámara Android (CU-07 / RF-20).
@@ -42,11 +45,15 @@ public class BarcodeScannerActivity extends AppCompatActivity {
 
     private TextInputEditText etCodigoManual;
     private TextInputLayout tilCodigoSimulado;
+    private DecoratedBarcodeView barcodeView;
+    // La cámara decodifica en continuo: sin esta bandera el mismo código abriría
+    // la hoja dos veces mientras la primera sigue en pantalla.
+    private boolean codigoEnProceso;
 
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
-                    iniciarCamara();
+                    reanudarEscaneo();
                 } else {
                     // Flujo alternativo 3a: permiso denegado, se ofrece búsqueda manual
                     Toast.makeText(this, R.string.msg_permiso_camara_denegado, Toast.LENGTH_LONG).show();
@@ -76,6 +83,7 @@ public class BarcodeScannerActivity extends AppCompatActivity {
 
         etCodigoManual = findViewById(R.id.etCodigoManual);
         tilCodigoSimulado = findViewById(R.id.tilCodigoSimulado);
+        barcodeView = findViewById(R.id.barcodeView);
 
         tilCodigoSimulado.setEndIconOnClickListener(v -> procesarCodigo(etCodigoManual.getText() != null ? etCodigoManual.getText().toString() : ""));
 
@@ -91,16 +99,64 @@ public class BarcodeScannerActivity extends AppCompatActivity {
     }
 
     private void verificarYPedirPermisoCamara() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            iniciarCamara();
-        } else {
-            requestPermissionLauncher.launch(Manifest.permission.CAMERA);
+        // Con el permiso ya concedido no se hace nada: onResume enciende la
+        // cámara, así evitamos abrirla dos veces en el primer arranque.
+        if (tienePermisoCamara()) {
+            return;
         }
+        requestPermissionLauncher.launch(Manifest.permission.CAMERA);
     }
 
+    /**
+     * Arranca la vista previa y la lectura continua (RF-20 / CU-07).
+     *
+     * DecoratedBarcodeView se encarga del preview y del decodificador; acá solo
+     * se reacciona al primer código leído. Si el permiso falta no se llama a
+     * resume(): abrir la cámara sin permiso lanza SecurityException.
+     */
     private void iniciarCamara() {
-        // En dispositivo físico/emulador con cámara activa el visor.
-        // Se mantiene listo el campo manual para ingreso directo o simulación.
+        if (barcodeView == null || !tienePermisoCamara()) {
+            return;
+        }
+        barcodeView.decodeContinuous(new BarcodeCallback() {
+            @Override
+            public void barcodeResult(BarcodeResult result) {
+                if (result == null || result.getText() == null || codigoEnProceso) {
+                    return;
+                }
+                codigoEnProceso = true;
+                barcodeView.pause();
+                procesarCodigo(result.getText());
+            }
+        });
+        barcodeView.resume();
+    }
+
+    /** Vuelve a escuchar la cámara después de cerrar el resultado o el aviso. */
+    private void reanudarEscaneo() {
+        codigoEnProceso = false;
+        iniciarCamara();
+    }
+
+    private boolean tienePermisoCamara() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Al volver de la pantalla de producto (o de segundo plano) la cámara se
+        // reactiva; si el permiso se revocó en Ajustes, queda el campo manual.
+        reanudarEscaneo();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (barcodeView != null) {
+            barcodeView.pause();
+        }
     }
 
     private void focarBusquedaManual() {
@@ -124,7 +180,8 @@ public class BarcodeScannerActivity extends AppCompatActivity {
             new MaterialAlertDialogBuilder(this)
                     .setTitle("Producto no encontrado")
                     .setMessage(R.string.msg_codigo_no_encontrado)
-                    .setPositiveButton("Aceptar", null)
+                    .setPositiveButton(R.string.aceptar, null)
+                    .setOnDismissListener(dialogo -> reanudarEscaneo())
                     .show();
             return;
         }
@@ -134,7 +191,8 @@ public class BarcodeScannerActivity extends AppCompatActivity {
             new MaterialAlertDialogBuilder(this)
                     .setTitle("Producto Deshabilitado")
                     .setMessage(R.string.msg_producto_inactivo_escaneado)
-                    .setPositiveButton("Aceptar", null)
+                    .setPositiveButton(R.string.aceptar, null)
+                    .setOnDismissListener(dialogo -> reanudarEscaneo())
                     .show();
             return;
         }
@@ -176,6 +234,9 @@ public class BarcodeScannerActivity extends AppCompatActivity {
             dialog.dismiss();
             abrirFormularioYFinalizar(producto.getIdProducto());
         });
+
+        // Si se cierra sin elegir, se vuelve a escuchar la cámara.
+        dialog.setOnDismissListener(d -> reanudarEscaneo());
 
         dialog.show();
     }
