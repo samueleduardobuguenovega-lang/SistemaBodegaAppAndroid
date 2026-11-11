@@ -1,5 +1,6 @@
 package com.android.sistemabodegaappandroid;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
@@ -13,6 +14,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 
 import com.android.sistemabodegaappandroid.db.DatabaseHelper;
@@ -23,6 +26,7 @@ import com.android.sistemabodegaappandroid.model.Producto;
 import com.android.sistemabodegaappandroid.model.Proveedor;
 import com.android.sistemabodegaappandroid.model.TipoMovimiento;
 import com.android.sistemabodegaappandroid.session.SessionManager;
+import com.android.sistemabodegaappandroid.ui.BarcodeScannerActivity;
 import com.android.sistemabodegaappandroid.ui.MovimientoStockDialog;
 import com.android.sistemabodegaappandroid.util.AccesoModulo;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
@@ -30,6 +34,7 @@ import com.android.sistemabodegaappandroid.util.Permisos;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -73,6 +78,23 @@ public class ProductoFormActivity extends AppCompatActivity {
     private TextInputEditText etStockInicial;
     // CU-03: código de barras opcional y unidad de medida de lista fija.
     private TextInputEditText etCodigoBarras;
+
+    /**
+     * Recibe el código leído por la cámara. El escáner se abre en modo captura,
+     * así que devuelve el texto en vez de buscar el producto.
+     */
+    private final ActivityResultLauncher<Intent> escanerCodigoLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) {
+                    return;
+                }
+                String codigo = result.getData().getStringExtra(BarcodeScannerActivity.EXTRA_RESULT_CODIGO);
+                if (codigo == null || codigo.trim().isEmpty()) {
+                    return;
+                }
+                etCodigoBarras.setText(codigo.trim());
+                etCodigoBarras.setSelection(etCodigoBarras.getText().length());
+            });
     private Spinner spinnerUnidadMedida;
     private List<String> unidadesMedida;
     private android.view.View tilStockInicial;
@@ -122,6 +144,7 @@ public class ProductoFormActivity extends AppCompatActivity {
         etStockInicial = findViewById(R.id.etStockInicial);
         tilStockInicial = findViewById(R.id.tilStockInicial);
         etCodigoBarras = findViewById(R.id.etCodigoBarras);
+        configurarEscaneoCodigoBarras();
         spinnerUnidadMedida = findViewById(R.id.spinnerUnidadMedida);
         spinnerCategoria = findViewById(R.id.spinnerCategoria);
         spinnerProveedor = findViewById(R.id.spinnerProveedor);
@@ -159,6 +182,23 @@ public class ProductoFormActivity extends AppCompatActivity {
         btnMovimiento.setOnClickListener(v -> mostrarDialogoMovimiento());
 
         animarEntradaFormulario();
+    }
+
+    /**
+     * El ícono del campo abre la cámara. El código leído se escribe en el campo
+     * para que la validación de duplicados lo revise igual que si se tipeó.
+     */
+    private void configurarEscaneoCodigoBarras() {
+        TextInputLayout tilCodigo = findViewById(R.id.tilCodigoBarras);
+        if (tilCodigo == null) {
+            return;
+        }
+        tilCodigo.setEndIconMode(TextInputLayout.END_ICON_CUSTOM);
+        tilCodigo.setEndIconOnClickListener(v -> {
+            Intent intent = new Intent(this, BarcodeScannerActivity.class);
+            intent.putExtra(BarcodeScannerActivity.EXTRA_MODO_CAPTURA, true);
+            escanerCodigoLauncher.launch(intent);
+        });
     }
 
     /**

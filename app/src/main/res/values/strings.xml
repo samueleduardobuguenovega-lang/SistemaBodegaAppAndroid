@@ -104,6 +104,7 @@
     <string name="title_producto_editar">Editar Producto</string>
     <string name="hint_sku">SKU</string>
     <string name="hint_codigo_barras">Código de barras (opcional)</string>
+    <string name="desc_escanear_codigo">Escanear el código con la cámara</string>
     <string name="hint_nombre_producto">Nombre del producto</string>
     <string name="hint_descripcion_producto">Descripción</string>
     <string name="hint_precio_costo">Precio de costo</string>

@@ -74,7 +74,11 @@
                 android:layout_marginTop="12dp"
                 android:hint="@string/hint_codigo_barras"
                 app:startIconDrawable="@drawable/ic_barcode"
-                app:startIconTint="@color/text_secondary">
+                app:startIconTint="@color/text_secondary"
+                app:endIconMode="custom"
+                app:endIconDrawable="@drawable/ic_scan"
+                app:endIconTint="@color/primary"
+                app:endIconContentDescription="@string/desc_escanear_codigo">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etCodigoBarras"

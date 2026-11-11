@@ -39,6 +39,11 @@ import com.journeyapps.barcodescanner.DecoratedBarcodeView;
 public class BarcodeScannerActivity extends AppCompatActivity {
 
     public static final String EXTRA_RESULT_PRODUCTO_ID = "extra_producto_id";
+    /** Modo captura: el escáner devuelve el código leído en vez de buscar el producto. */
+    public static final String EXTRA_MODO_CAPTURA = "extra_modo_captura";
+    public static final String EXTRA_RESULT_CODIGO = "extra_resultado_codigo";
+
+    private boolean modoCaptura;
 
     private DatabaseHelper dbHelper;
     private ProductoDao productoDao;
@@ -75,6 +80,7 @@ public class BarcodeScannerActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         productoDao = new ProductoDao(dbHelper);
+        modoCaptura = getIntent().getBooleanExtra(EXTRA_MODO_CAPTURA, false);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbarBarcodeScanner);
         if (toolbar != null) {
@@ -126,10 +132,23 @@ public class BarcodeScannerActivity extends AppCompatActivity {
                 }
                 codigoEnProceso = true;
                 barcodeView.pause();
+                if (modoCaptura) {
+                    // El formulario de producto solo quiere el texto leído.
+                    devolverCodigo(result.getText());
+                    return;
+                }
                 procesarCodigo(result.getText());
             }
         });
         barcodeView.resume();
+    }
+
+    /** Devuelve el código leído a quien abrió el escáner en modo captura. */
+    private void devolverCodigo(String codigo) {
+        Intent data = new Intent();
+        data.putExtra(EXTRA_RESULT_CODIGO, codigo == null ? "" : codigo.trim());
+        setResult(RESULT_OK, data);
+        finish();
     }
 
     /** Vuelve a escuchar la cámara después de cerrar el resultado o el aviso. */
