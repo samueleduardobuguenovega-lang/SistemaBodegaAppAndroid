@@ -21,8 +21,8 @@ android {
         applicationId = "com.android.sistemabodegaappandroid"
         minSdk = 30
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 5
+        versionName = "1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
