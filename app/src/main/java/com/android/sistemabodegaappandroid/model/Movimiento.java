@@ -26,6 +26,11 @@ public class Movimiento {
     // cuando la fila es anterior a la v8.
     private String documento;
     private String motivo;
+    // Nombre y SKU del producto movido, resueltos con el JOIN a PRODUCTO para
+    // que el historial no tenga que mostrar "Producto ID #7" (RF-21). Vacíos
+    // cuando la fila quedó huérfana o la consulta no los pidió.
+    private String nombreProducto;
+    private String skuCodigo;
 
     public Movimiento() {
     }
@@ -129,6 +134,22 @@ public class Movimiento {
         this.documento = documento != null ? documento : "";
     }
 
+    public String getNombreProducto() {
+        return nombreProducto != null ? nombreProducto : "";
+    }
+
+    public void setNombreProducto(String nombreProducto) {
+        this.nombreProducto = nombreProducto != null ? nombreProducto : "";
+    }
+
+    public String getSkuCodigo() {
+        return skuCodigo != null ? skuCodigo : "";
+    }
+
+    public void setSkuCodigo(String skuCodigo) {
+        this.skuCodigo = skuCodigo != null ? skuCodigo : "";
+    }
+
     public String getMotivo() {
         return motivo != null ? motivo : "";
     }
@@ -146,6 +167,7 @@ public class Movimiento {
                 + ", fecha='" + fecha + '\''
                 + ", idProveedor=" + idProveedor
                 + ", razonSocialProveedor='" + getRazonSocialProveedor() + '\''
+                + ", nombreProducto='" + getNombreProducto() + '\''
                 + "}";
     }
 }

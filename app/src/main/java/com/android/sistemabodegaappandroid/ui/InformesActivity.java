@@ -57,6 +57,10 @@ public class InformesActivity extends AppCompatActivity {
     private TabLayout tabLayout;
     private RecyclerView rvInformes;
     private MaterialButton btnExportar;
+    // Filtros y contadores que solo tienen sentido en el informe de stock: el
+    // historial se filtra por producto, no por categoría ni por estado.
+    private View filaFiltrosStock;
+    private View containerResumenInformes;
 
     private final List<Categoria> listaCategorias = new ArrayList<>();
     private int idCategoriaSeleccionada = 0;
@@ -93,6 +97,8 @@ public class InformesActivity extends AppCompatActivity {
         tabLayout = findViewById(R.id.tabLayoutInformes);
         rvInformes = findViewById(R.id.rvInformes);
         btnExportar = findViewById(R.id.btnExportarInforme);
+        filaFiltrosStock = findViewById(R.id.filaFiltrosStock);
+        containerResumenInformes = findViewById(R.id.containerResumenInformes);
 
         informeAdapter = new InformeStockAdapter(producto -> {
             Intent intent = new Intent(InformesActivity.this, ProductoFormActivity.class);
@@ -185,13 +191,18 @@ public class InformesActivity extends AppCompatActivity {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 tabActual = tab.getPosition();
-                if (tabActual == 0) {
+                boolean esInformeStock = tabActual == 0;
+                if (esInformeStock) {
                     rvInformes.setAdapter(informeAdapter);
-                    btnExportar.setVisibility(View.VISIBLE);
                 } else {
                     rvInformes.setAdapter(movimientoAdapter);
-                    btnExportar.setVisibility(View.GONE);
                 }
+                btnExportar.setVisibility(esInformeStock ? View.VISIBLE : View.GONE);
+                // El estado del stock y la categoría no filtran un movimiento:
+                // si se dejan a la vista, elegir "Stock bajo" vaciaba el
+                // historial porque ese texto viajaba como tipo de movimiento.
+                filaFiltrosStock.setVisibility(esInformeStock ? View.VISIBLE : View.GONE);
+                containerResumenInformes.setVisibility(esInformeStock ? View.VISIBLE : View.GONE);
                 actualizarVistaActual();
             }
 
@@ -243,7 +254,10 @@ public class InformesActivity extends AppCompatActivity {
     }
 
     private void cargarHistorialMovimientos() {
-        List<Movimiento> movimientos = productoDao.getHistorialMovimientosGeneral(0, estadoSeleccionado);
+        // Se filtra por el texto del buscador (nombre o SKU) y nunca por el
+        // estado del stock: ese combo era el que dejaba la lista vacía.
+        String busqueda = etBuscar.getText() != null ? etBuscar.getText().toString() : "";
+        List<Movimiento> movimientos = productoDao.getHistorialMovimientosGeneral(0, null, busqueda);
         movimientoAdapter.updateData(movimientos);
 
         boolean vacio = movimientos.isEmpty();

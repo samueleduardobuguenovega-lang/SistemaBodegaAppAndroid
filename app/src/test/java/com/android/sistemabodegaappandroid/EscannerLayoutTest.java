@@ -18,12 +18,13 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
 /**
- * El escáner (RF-20) tiene que traer la vista de la cámara en el layout.
+ * Layouts de las pantallas nuevas: el escáner (RF-20) y los informes (RF-19).
  *
- * Antes esta pantalla mostraba una retícula dibujada con un View y un texto
- * "enfoque el código", pero no había cámara: nada leía el código. Esta prueba
- * fija que el layout conserve el componente que sí decodifica, y que el ingreso
- * manual siga disponible como respaldo.
+ * En el escáner, la pantalla anterior mostraba una retícula dibujada con un View
+ * y el texto "enfoque el código", pero no había cámara. Acá se fija que el
+ * layout conserve el componente que sí decodifica y el ingreso manual como
+ * respaldo. En informes, que los filtros del stock sigan en su propia fila: son
+ * los que hay que ocultar al mirar el historial.
  */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 34)
@@ -44,5 +45,15 @@ public class EscannerLayoutTest {
         assertTrue("la vista de la cámara debe ser la del decodificador ZXing",
                 camara instanceof DecoratedBarcodeView);
         assertNotNull("el ingreso manual debe seguir disponible", escaner.findViewById(R.id.etCodigoManual));
+    }
+
+    @Test
+    public void losInformesSeparanLosFiltrosDeStock() {
+        View informes = inflar(R.layout.activity_informes);
+
+        assertNotNull("el informe de stock necesita su fila de filtros",
+                informes.findViewById(R.id.filaFiltrosStock));
+        assertNotNull(informes.findViewById(R.id.containerResumenInformes));
+        assertNotNull(informes.findViewById(R.id.tabLayoutInformes));
     }
 }

@@ -34,6 +34,7 @@ public class MovimientoGeneralAdapter extends ListAdapter<Movimiento, Movimiento
         public boolean areContentsTheSame(@NonNull Movimiento a, @NonNull Movimiento b) {
             return a.getIdProducto() == b.getIdProducto()
                     && a.getCantidad() == b.getCantidad()
+                    && igual(a.getNombreProducto(), b.getNombreProducto())
                     && igual(a.getTipo(), b.getTipo())
                     && igual(a.getUsuario(), b.getUsuario())
                     && igual(a.getFecha(), b.getFecha());
@@ -73,7 +74,15 @@ public class MovimientoGeneralAdapter extends ListAdapter<Movimiento, Movimiento
         holder.tvCantidad.setText(signo + mov.getCantidad() + " unidades");
         holder.tvFecha.setText(mov.getFecha() != null ? mov.getFecha() : "");
 
-        holder.tvProducto.setText("Producto ID #" + mov.getIdProducto());
+        // El nombre sale del JOIN a PRODUCTO; si la fila quedó huérfana se
+        // vuelve al id para no mostrar una línea vacía.
+        String nombreProducto = mov.getNombreProducto();
+        if (nombreProducto.isEmpty()) {
+            holder.tvProducto.setText("Producto ID #" + mov.getIdProducto());
+        } else {
+            String sku = mov.getSkuCodigo();
+            holder.tvProducto.setText(sku.isEmpty() ? nombreProducto : nombreProducto + " · " + sku);
+        }
         holder.tvUsuario.setText("Usuario: @" + (mov.getUsuario() != null ? mov.getUsuario() : "sistema"));
 
         if (esEntrada && mov.getRazonSocialProveedor() != null && !mov.getRazonSocialProveedor().trim().isEmpty()) {

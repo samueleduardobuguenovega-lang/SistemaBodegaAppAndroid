@@ -577,8 +577,29 @@ public class ProductoDao {
         }
     }
 
-    /** RF-21: Historial de movimientos general (para todos los productos o filtrado por idProducto y tipo). */
+    /**
+     * RF-21: historial general, sin filtro de texto.
+     *
+     * Se mantiene por compatibilidad: la pantalla de informes usa la versión
+     * con búsqueda, que además trae el nombre del producto.
+     */
     public List<Movimiento> getHistorialMovimientosGeneral(int idProducto, String tipoMovimiento) {
+        return getHistorialMovimientosGeneral(idProducto, tipoMovimiento, null);
+    }
+
+    /**
+     * RF-21 y RF-22: historial de movimientos con el nombre del producto.
+     *
+     * El listado mostraba "Producto ID #7", que no le dice nada a quien revisa
+     * el historial: el JOIN a PRODUCTO trae nombre y SKU del producto movido.
+     *
+     * @param idProducto      limita a un producto; 0 o negativo no filtra.
+     * @param tipoMovimiento  ENTRADA o SALIDA; null, vacío o TODOS no filtra.
+     * @param textoBusqueda   filtra por nombre o SKU; null o vacío no filtra.
+     * @return los movimientos del más reciente al más antiguo, hasta 200.
+     */
+    public List<Movimiento> getHistorialMovimientosGeneral(int idProducto, String tipoMovimiento,
+                                                           String textoBusqueda) {
         List<Movimiento> list = new ArrayList<>();
         SQLiteDatabase db = helper.getReadableDatabase();
         StringBuilder sql = new StringBuilder();
@@ -590,10 +611,15 @@ public class ProductoDao {
            .append(", m.").append(DatabaseHelper.COLUMN_MOV_FECHA)
            .append(", m.").append(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR)
            .append(", pr.").append(DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL)
+           .append(", p.").append(DatabaseHelper.COLUMN_PROD_NOMBRE)
+           .append(", p.").append(DatabaseHelper.COLUMN_PROD_SKU)
            .append(" FROM ").append(DatabaseHelper.TABLE_MOVIMIENTO).append(" m")
            .append(" LEFT JOIN ").append(DatabaseHelper.TABLE_PROVEEDOR).append(" pr")
            .append(" ON m.").append(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR)
            .append(" = pr.").append(DatabaseHelper.COLUMN_PROV_ID)
+           .append(" LEFT JOIN ").append(DatabaseHelper.TABLE_PRODUCTO).append(" p")
+           .append(" ON m.").append(DatabaseHelper.COLUMN_MOV_ID_PRODUCTO)
+           .append(" = p.").append(DatabaseHelper.COLUMN_PROD_ID)
            .append(" WHERE 1=1");
 
         List<String> args = new ArrayList<>();
@@ -605,11 +631,20 @@ public class ProductoDao {
             sql.append(" AND UPPER(m.").append(DatabaseHelper.COLUMN_MOV_TIPO).append(") = ?");
             args.add(tipoMovimiento.trim().toUpperCase(Locale.ROOT));
         }
+        if (textoBusqueda != null && !textoBusqueda.trim().isEmpty()) {
+            sql.append(" AND (p.").append(DatabaseHelper.COLUMN_PROD_NOMBRE).append(" LIKE ?")
+               .append(" OR p.").append(DatabaseHelper.COLUMN_PROD_SKU).append(" LIKE ?)");
+            String patron = "%" + textoBusqueda.trim() + "%";
+            args.add(patron);
+            args.add(patron);
+        }
         sql.append(" ORDER BY m.").append(DatabaseHelper.COLUMN_MOV_FECHA).append(" DESC LIMIT 200");
 
         Cursor cursor = db.rawQuery(sql.toString(), args.isEmpty() ? null : args.toArray(new String[0]));
         int indProv = cursor.getColumnIndex(DatabaseHelper.COLUMN_MOV_ID_PROVEEDOR);
         int indRazon = cursor.getColumnIndex(DatabaseHelper.COLUMN_PROV_RAZON_SOCIAL);
+        int indNombre = cursor.getColumnIndex(DatabaseHelper.COLUMN_PROD_NOMBRE);
+        int indSku = cursor.getColumnIndex(DatabaseHelper.COLUMN_PROD_SKU);
 
         if (cursor.moveToFirst()) {
             do {
@@ -622,6 +657,12 @@ public class ProductoDao {
                         cursor.getString(5),
                         indProv >= 0 ? cursor.getInt(indProv) : 0,
                         (indRazon >= 0 && !cursor.isNull(indRazon)) ? cursor.getString(indRazon) : "");
+                // El producto puede faltar (fila huérfana): el adaptador vuelve
+                // al id cuando el nombre viene vacío.
+                mov.setNombreProducto(indNombre >= 0 && !cursor.isNull(indNombre)
+                        ? cursor.getString(indNombre) : "");
+                mov.setSkuCodigo(indSku >= 0 && !cursor.isNull(indSku)
+                        ? cursor.getString(indSku) : "");
                 list.add(mov);
             } while (cursor.moveToNext());
         }
