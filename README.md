@@ -2,9 +2,22 @@
 
 Aplicación Android de gestión de bodega sobre SQLite: usuarios y roles con permisos, categorías,
 productos con SKU único, proveedores, movimientos de entrada y salida con constancia documental,
-e historial de stock por producto. Proyecto académico de Programación Android (IEI-093); el
-contrato funcional está en [`docs/requerimientos-casos-de-uso.md`](docs/requerimientos-casos-de-uso.md)
-y la trazabilidad requisito → código en [`docs/conformidad.md`](docs/conformidad.md).
+informe de stock, historial de movimientos, escaneo por código de barras y ubicación de la empresa.
+Proyecto académico de Programación Android (IEI-093).
+
+## Descargar el APK e instalar
+
+La entrega final está publicada como *release* del repositorio:
+
+**https://github.com/samueleduardobuguenovega-lang/SistemaBodegaAppAndroid/releases/latest**
+
+1. Descargar `SistemaBodegaAppAndroid-1.1.apk` en el teléfono.
+2. Abrirlo y aceptar la instalación de origen desconocido cuando Android la pida.
+3. Iniciar sesión con **usuario `admin` y contraseña `admin`** (el usuario se crea en
+   la primera apertura de la app, sobre la base local del teléfono).
+
+No hace falta compilar nada: el APK ya está firmado e incluye todo lo necesario.
+La versión de código de esa entrega es la etiqueta `v1.1` de este repositorio.
 
 ## Requisitos para compilar
 
@@ -61,7 +74,9 @@ ese archivo.
 | `androidx.constraintlayout` | 2.2.2 | Layouts de las pantallas |
 | `androidx.lifecycle` (`lifecycle-livedata`) | 2.6.2 | Catálogo, categorías, proveedores y deshabilitados como `LiveData` |
 | `androidx.security` (`security-crypto`) | 1.1.0 | Sesión del usuario cifrada (`SessionManager`) |
+| `com.journeyapps` (`zxing-android-embedded`) | 4.3.0 | Cámara y decodificación del código de barras (RF-20) |
 | `junit` | 4.13.2 | Pruebas unitarias |
+| `org.robolectric` (`robolectric`) | 4.17 | Pruebas de SQLite y de layouts sobre la JVM, sin dispositivo |
 | `androidx.test.ext:junit` | 1.3.0 | Pruebas instrumentadas |
 | `androidx.test.espresso:espresso-core` | 3.7.0 | Pruebas instrumentadas |
 
@@ -86,6 +101,9 @@ app/src/main/java/com/android/sistemabodegaappandroid/
 ├── db/*Dao                                  consultas de productos y proveedores
 ├── model/                                   POJOs leídos con Cursor (sin ORM)
 ├── session/SessionManager                   sesión cifrada
+├── ui/InformesActivity                      informe de stock e historial general (RF-19 / RF-21 / RF-22)
+├── ui/BarcodeScannerActivity                escáner con cámara y búsqueda por código (RF-20)
+├── ui/UbicacionEmpresaActivity              ubicación de la empresa en Maps (RF-24)
 ├── ui/MovimientoStockDialog                 diálogo único de entrada/salida (CU-04 / CU-05)
 ├── ui/adapter, ui/admin                     listas y administración de usuarios y roles
 └── util/                                    permisos, guard de módulo, insets
@@ -93,7 +111,7 @@ app/src/main/java/com/android/sistemabodegaappandroid/
 
 ## Base de datos
 
-Esquema actual: **versión 8**, en `sistema_bodega.db`. Las migraciones son incrementales e
+Esquema actual: **versión 9**, en `sistema_bodega.db`. Las migraciones son incrementales e
 idempotentes: cada `ALTER TABLE` consulta antes `PRAGMA table_info`, de modo que repetir un paso
 no rompe y un fallo a medias se reintenta en el arranque siguiente.
 
@@ -104,6 +122,7 @@ no rompe y un fallo a medias se reintenta en el arranque siguiente.
 | v6 | `PRODUCTO.codigo_barras` (único cuando se informa) y `unidad_medida` |
 | v7 | Índices de SKU, código de barras y movimiento; fechas ordenables |
 | v8 | `MOVIMIENTO.documento` y `MOVIMIENTO.motivo` (CU-04 / CU-05) |
+| v9 | `INFORMES` agregado a `ROL.permisos` de los roles que ya operan inventario |
 
 Las migraciones que tocan datos se pueden reproducir sin dispositivo, contra SQLite real:
 
@@ -111,6 +130,7 @@ Las migraciones que tocan datos se pueden reproducir sin dispositivo, contra SQL
 python3 tools/simular_migracion_v5.py          # ROL.permisos y su relleno
 python3 tools/simular_reparacion_permisos.py   # base marcada como migrada sin la columna
 python3 tools/simular_migracion_v8.py          # documento y motivo sin perder movimientos
+python3 tools/simular_migracion_v9.py          # permiso de informes en los roles existentes
 ```
 
 ## Requisito → archivo
@@ -124,6 +144,10 @@ python3 tools/simular_migracion_v8.py          # documento y motivo sin perder m
 | RF-07 Modificar producto | `ProductoFormActivity.guardarEdicion`, `ProductoDao.updateProducto` |
 | RF-08 Deshabilitar producto | `ProductoDao.updateProductoEstado`, `ProductosActivity` (interruptor de deshabilitados) |
 | CU-04 / CU-05 Entradas y salidas | `MovimientoStockDialog`, `ProductoDao.actualizarStock`, `MOVIMIENTO.documento` y `.motivo` |
+| RF-19 / RF-22 Informe de stock y filtros | `InformesActivity` + `ProductoDao.getInformeProductos` |
+| RF-20 Escaneo por código de barras | `BarcodeScannerActivity` + `DecoratedBarcodeView` (ZXing) + `ProductoDao.getProductoByCodigoBarrasIncluyendoInactivos` |
+| RF-21 Historial de movimientos | `InformesActivity` (pestaña Historial) + `ProductoDao.getHistorialMovimientosGeneral` |
+| RF-24 Ubicación de la empresa | `UbicacionEmpresaActivity` (intent `geo:` y ruta en Maps) |
 | CU-09 Categorías | `CategoriasActivity` + `DatabaseHelper.observarCategoriasActivas` |
 | CU-11 / CU-12 Proveedores | `ProveedoresActivity`, `ProveedorFormActivity`, `ProveedorDao` |
 | CU-27 / RF-27 Usuarios y roles | `ui/admin/UsuariosFragment`, `RolesFragment`, `UserRoleAdminActivity` |
@@ -135,11 +159,16 @@ python3 tools/simular_migracion_v8.py          # documento y motivo sin perder m
 ./gradlew :app:testDebugUnitTest
 ```
 
-**95 pruebas, 15 clases.** Son pruebas JVM que verifican estructura y contratos (presencia de
-métodos, columnas del esquema, cadenas en recursos, uso del executor) más los casos de lógica pura
-—hash de contraseñas, parseo de cantidades, reglas de permisos—. No hay pruebas instrumentadas ni
-Robolectric: el comportamiento que depende de Android se verifica con `assembleDebug` y con las
-simulaciones de migración en `tools/`.
+**116 pruebas, 20 clases.** La mayoría son pruebas JVM de estructura y contratos (presencia de
+métodos, columnas del esquema, cadenas en recursos, uso del executor) y de lógica pura —hash de
+contraseñas, parseo de cantidades, reglas de permisos—.
 
-El detalle de qué cubre cada clase y los límites conocidos están en
-[`docs/conformidad.md`](docs/conformidad.md).
+Las que sí ejercitan Android corren con **Robolectric**, contra SQLite real: el historial con el
+nombre del producto, la búsqueda del informe, el rechazo de una salida mayor al stock y la migración
+v8 → v9 (`HistorialMovimientosTest`, `MigracionV9Test`, `EscannerLayoutTest`). Lo que Robolectric no
+cubre es abrir una `Activity`: `SessionManager` usa `EncryptedSharedPreferences` y necesita el
+keystore del teléfono, así que el recorrido de pantallas se prueba en el dispositivo, y las
+migraciones que tocan datos también se pueden reproducir con los scripts de `tools/`.
+
+Las pruebas que ejercitan Android corren contra SQLite real; lo que no se puede probar sin
+dispositivo está listado en los límites conocidos del proyecto.
