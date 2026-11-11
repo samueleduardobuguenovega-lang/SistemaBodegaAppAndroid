@@ -61,10 +61,13 @@ public class InformesActivity extends AppCompatActivity {
     // historial se filtra por producto, no por categoría ni por estado.
     private View filaFiltrosStock;
     private View containerResumenInformes;
+    private View filaFiltroHistorial;
+    private Spinner spinnerTipoHistorial;
 
     private final List<Categoria> listaCategorias = new ArrayList<>();
     private int idCategoriaSeleccionada = 0;
     private String estadoSeleccionado = "TODOS";
+    private String tipoHistorial = "TODOS";
     private int tabActual = 0; // 0: Informe Stock, 1: Historial
 
     @Override
@@ -98,6 +101,8 @@ public class InformesActivity extends AppCompatActivity {
         rvInformes = findViewById(R.id.rvInformes);
         btnExportar = findViewById(R.id.btnExportarInforme);
         filaFiltrosStock = findViewById(R.id.filaFiltrosStock);
+        filaFiltroHistorial = findViewById(R.id.filaFiltroHistorial);
+        spinnerTipoHistorial = findViewById(R.id.spinnerTipoHistorial);
         containerResumenInformes = findViewById(R.id.containerResumenInformes);
 
         informeAdapter = new InformeStockAdapter(producto -> {
@@ -171,6 +176,31 @@ public class InformesActivity extends AppCompatActivity {
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
+
+        // Tipo de movimiento: el dueño necesita separar lo que entró de lo que salió.
+        String[] tipos = {
+                getString(R.string.filter_tipo_todos),
+                getString(R.string.filter_tipo_entrada),
+                getString(R.string.filter_tipo_salida)
+        };
+        ArrayAdapter<String> adapterTipo = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, tipos);
+        adapterTipo.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerTipoHistorial.setAdapter(adapterTipo);
+        spinnerTipoHistorial.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                switch (position) {
+                    case 1: tipoHistorial = "ENTRADA"; break;
+                    case 2: tipoHistorial = "SALIDA"; break;
+                    default: tipoHistorial = "TODOS"; break;
+                }
+                actualizarVistaActual();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
     private void configurarBuscadorYTabs() {
@@ -202,6 +232,7 @@ public class InformesActivity extends AppCompatActivity {
                 // si se dejan a la vista, elegir "Stock bajo" vaciaba el
                 // historial porque ese texto viajaba como tipo de movimiento.
                 filaFiltrosStock.setVisibility(esInformeStock ? View.VISIBLE : View.GONE);
+                filaFiltroHistorial.setVisibility(esInformeStock ? View.GONE : View.VISIBLE);
                 containerResumenInformes.setVisibility(esInformeStock ? View.VISIBLE : View.GONE);
                 actualizarVistaActual();
             }
@@ -257,7 +288,7 @@ public class InformesActivity extends AppCompatActivity {
         // Se filtra por el texto del buscador (nombre o SKU) y nunca por el
         // estado del stock: ese combo era el que dejaba la lista vacía.
         String busqueda = etBuscar.getText() != null ? etBuscar.getText().toString() : "";
-        List<Movimiento> movimientos = productoDao.getHistorialMovimientosGeneral(0, null, busqueda);
+        List<Movimiento> movimientos = productoDao.getHistorialMovimientosGeneral(0, tipoHistorial, busqueda);
         movimientoAdapter.updateData(movimientos);
 
         boolean vacio = movimientos.isEmpty();

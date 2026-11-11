@@ -105,6 +105,9 @@
     <string name="hint_sku">SKU</string>
     <string name="hint_codigo_barras">Código de barras (opcional)</string>
     <string name="desc_escanear_codigo">Escanear el código con la cámara</string>
+    <string name="filter_tipo_todos">Todas las entradas y salidas</string>
+    <string name="filter_tipo_entrada">Solo entradas</string>
+    <string name="filter_tipo_salida">Solo salidas</string>
     <string name="hint_nombre_producto">Nombre del producto</string>
     <string name="hint_descripcion_producto">Descripción</string>
     <string name="hint_precio_costo">Precio de costo</string>

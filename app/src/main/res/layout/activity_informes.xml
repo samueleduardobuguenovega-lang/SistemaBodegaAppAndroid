@@ -189,6 +189,23 @@
                 android:paddingEnd="10dp"/>
         </LinearLayout>
 
+        <!-- Filtro de tipo para el historial: el dueño pregunta qué salió y qué entró. -->
+        <LinearLayout
+            android:id="@+id/filaFiltroHistorial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <Spinner
+                android:id="@+id/spinnerTipoHistorial"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/alto_filtro"
+                android:background="@drawable/bg_filtro"
+                android:paddingStart="14dp"
+                android:paddingEnd="10dp"/>
+        </LinearLayout>
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilBuscarInforme"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
