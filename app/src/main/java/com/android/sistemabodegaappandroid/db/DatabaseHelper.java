@@ -17,6 +17,7 @@ import com.android.sistemabodegaappandroid.model.Proveedor;
 import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.util.PasswordUtils;
+import com.android.sistemabodegaappandroid.util.Permisos;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -36,7 +37,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * v7 sumó índices y fechas ordenables; v8 suma el documento y el motivo de
      * cada movimiento (CU-04 / CU-05).
      */
-    private static final int DATABASE_VERSION = 8;
+    private static final int DATABASE_VERSION = 9;
 
     /** Etiqueta de los registros de log del helper (fallos de migración, etc.). */
     private static final String TAG = "DatabaseHelper";
@@ -342,6 +343,52 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "ALTER TABLE " + TABLE_MOVIMIENTO
                             + " ADD COLUMN " + COLUMN_MOV_MOTIVO + " TEXT",
                     "v8: MOVIMIENTO." + COLUMN_MOV_MOTIVO);
+        }
+        if (oldVersion < 9) {
+            // v9: el módulo de informes (RF-19, RF-21, RF-22) llegó después de que
+            // ROL.permisos ya existía. Rellenar solo las filas vacías no alcanza:
+            // un rol que ya tenía sus cinco tokens nunca recibió INFORMES, así que
+            // el panel no mostraba el acceso y AccesoModulo rebotaba la pantalla.
+            // Se agrega a los roles que operan inventario (los que ya tienen
+            // MOVIMIENTOS), que es el mismo criterio de los roles nuevos.
+            agregarPermisoInformesARolesDeInventario(db);
+        }
+    }
+
+    /**
+     * Agrega el token INFORMES a los roles que ya tienen MOVIMIENTOS.
+     *
+     * Se apoya en {@link Permisos#tiene} para comparar tokens completos: buscar
+     * "INFORMES" como subcadena daría por habilitado un permiso que no está. Las
+     * filas sin permisos quedan como están, porque de eso se ocupa
+     * {@link #rellenarPermisosDeRolesExistentes} y un rol recién creado puede
+     * legítimamente no tener ninguno.
+     *
+     * @param db base con la columna ROL.permisos ya creada.
+     */
+    private void agregarPermisoInformesARolesDeInventario(SQLiteDatabase db) {
+        List<String[]> cambios = new ArrayList<>();
+        try (Cursor cursor = db.rawQuery(
+                "SELECT " + COLUMN_ROL_ID + ", " + COLUMN_ROL_PERMISOS + " FROM " + TABLE_ROL, null)) {
+            int indiceId = cursor.getColumnIndexOrThrow(COLUMN_ROL_ID);
+            int indicePermisos = cursor.getColumnIndexOrThrow(COLUMN_ROL_PERMISOS);
+            while (cursor.moveToNext()) {
+                String permisos = cursor.getString(indicePermisos);
+                if (Permisos.tiene(permisos, Permisos.MOVIMIENTOS)
+                        && !Permisos.tiene(permisos, Permisos.INFORMES)) {
+                    cambios.add(new String[]{
+                            String.valueOf(cursor.getInt(indiceId)),
+                            Permisos.agregar(permisos, Permisos.INFORMES)});
+                }
+            }
+        }
+        for (String[] cambio : cambios) {
+            ContentValues cv = new ContentValues();
+            cv.put(COLUMN_ROL_PERMISOS, cambio[1]);
+            db.update(TABLE_ROL, cv, COLUMN_ROL_ID + " = ?", new String[]{cambio[0]});
+        }
+        if (!cambios.isEmpty()) {
+            Log.i(TAG, "Paso de migracion v9: INFORMES agregado a " + cambios.size() + " rol(es)");
         }
     }
 

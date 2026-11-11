@@ -109,6 +109,7 @@ public class RolesFragment extends Fragment {
         CheckBox cbCategorias = dialogView.findViewById(R.id.cbPermisoCategorias);
         CheckBox cbProveedores = dialogView.findViewById(R.id.cbPermisoProveedores);
         CheckBox cbMovimientos = dialogView.findViewById(R.id.cbPermisoMovimientos);
+        CheckBox cbInformes = dialogView.findViewById(R.id.cbPermisoInformes);
 
         if (esEdicion) {
             etNombreRol.setText(rolEditar.getNombreRol());
@@ -121,6 +122,7 @@ public class RolesFragment extends Fragment {
             cbCategorias.setChecked(Permisos.tiene(p, Permisos.CATEGORIAS));
             cbProveedores.setChecked(Permisos.tiene(p, Permisos.PROVEEDORES));
             cbMovimientos.setChecked(Permisos.tiene(p, Permisos.MOVIMIENTOS));
+            cbInformes.setChecked(Permisos.tiene(p, Permisos.INFORMES));
         } else {
             cbProductos.setChecked(true);
             cbCategorias.setChecked(true);
@@ -148,13 +150,16 @@ public class RolesFragment extends Fragment {
                         return;
                     }
 
-                    List<String> perms = new ArrayList<>();
-                    if (cbUsuarios.isChecked()) perms.add("USUARIOS");
-                    if (cbProductos.isChecked()) perms.add("PRODUCTOS");
-                    if (cbCategorias.isChecked()) perms.add("CATEGORIAS");
-                    if (cbProveedores.isChecked()) perms.add("PROVEEDORES");
-                    if (cbMovimientos.isChecked()) perms.add("MOVIMIENTOS");
-                    String permisosStr = TextUtils.join(",", perms);
+                    // El CSV se arma con Permisos.unir: cuando los tokens se
+                    // sumaban a mano acá, agregar un permiso nuevo (INFORMES)
+                    // hacia que editar un rol lo borrara sin avisar.
+                    String permisosStr = Permisos.unir(
+                            cbUsuarios.isChecked(),
+                            cbProductos.isChecked(),
+                            cbCategorias.isChecked(),
+                            cbProveedores.isChecked(),
+                            cbMovimientos.isChecked(),
+                            cbInformes.isChecked());
 
                     if (esEdicion) {
                         rolEditar.setNombreRol(nombreRol);

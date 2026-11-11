@@ -77,4 +77,10 @@
         android:layout_height="wrap_content"
         android:text="Registrar Movimientos de Stock" />
 
+    <CheckBox
+        android:id="@+id/cbPermisoInformes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ver Informes e Historial" />
+
 </LinearLayout>

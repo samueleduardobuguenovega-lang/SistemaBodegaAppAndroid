@@ -29,18 +29,21 @@ public class CasosDeUsoFaltantesTest {
     // --- RF-08: baja lógica de productos ---
 
     /**
-     * La BD está en la versión 8: v6 agregó codigo_barras y unidad_medida a
-     * PRODUCTO (CU-03), v7 suma los índices y las fechas en formato ordenable y
-     * v8 el documento y el motivo de cada movimiento (CU-04 / CU-05), todo con
-     * migración incremental sobre los datos existentes.
+     * La BD está en la versión 9: v6 agregó codigo_barras y unidad_medida a
+     * PRODUCTO (CU-03), v7 suma los índices y las fechas en formato ordenable,
+     * v8 el documento y el motivo de cada movimiento (CU-04 / CU-05) y v9 el
+     * permiso INFORMES de los roles que ya existían (RF-19), todo con migración
+     * incremental sobre los datos existentes.
      */
     @Test
-    public void databaseVersionOcho() throws IOException {
+    public void databaseVersionNueve() throws IOException {
         String fuente = leer("DatabaseHelper.java");
-        assertTrue("DATABASE_VERSION debe valer 8",
-                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*8\\s*;.*"));
+        assertTrue("DATABASE_VERSION debe valer 9",
+                fuente.matches("(?s).*DATABASE_VERSION\\s*=\\s*9\\s*;.*"));
         assertTrue("La migración debe cubrir el paso a la versión 8",
                 fuente.contains("oldVersion < 8"));
+        assertTrue("La migración debe cubrir el paso a la versión 9",
+                fuente.contains("oldVersion < 9"));
     }
 
     /** La migración v4 debe usar ALTER TABLE incremental, nunca DROP TABLE. */

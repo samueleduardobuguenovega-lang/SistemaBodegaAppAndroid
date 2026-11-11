@@ -121,18 +121,20 @@ public class Fase0Test {
     }
 
     /**
-     * v8: documento y motivo en MOVIMIENTO (CU-04 / CU-05). El paso v7 sigue
-     * existiendo y no se puede perder al subir la versión.
+     * v9: permiso INFORMES para los roles de inventario (RF-19). Los pasos v7 y
+     * v8 siguen existiendo y no se pueden perder al subir la versión.
      */
     @Test
-    public void dbVersionOcho() throws IOException {
+    public void dbVersionNueve() throws IOException {
         String helper = leer("DatabaseHelper.java");
-        assertTrue("La base debe estar en la versión 8",
-                helper.matches("(?s).*DATABASE_VERSION\\s*=\\s*8\\s*;.*"));
+        assertTrue("La base debe estar en la versión 9",
+                helper.matches("(?s).*DATABASE_VERSION\\s*=\\s*9\\s*;.*"));
         assertTrue("La migración debe cubrir el paso a la versión 7",
                 helper.contains("oldVersion < 7"));
         assertTrue("La migración debe cubrir el paso a la versión 8",
                 helper.contains("oldVersion < 8"));
+        assertTrue("La migración debe cubrir el paso a la versión 9",
+                helper.contains("oldVersion < 9"));
     }
 
     // --- helpers ---
