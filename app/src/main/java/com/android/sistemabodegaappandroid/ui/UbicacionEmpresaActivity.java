@@ -6,6 +6,9 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -62,8 +65,49 @@ public class UbicacionEmpresaActivity extends AppCompatActivity {
         MaterialButton btnAbrirMaps = findViewById(R.id.btnAbrirGoogleMaps);
         MaterialButton btnComoLlegar = findViewById(R.id.btnComoLlegar);
 
+        // Mapa real del local (OpenStreetMap embebido, sin API key).
+        WebView webMapa = findViewById(R.id.webMapa);
+        if (webMapa != null) {
+            WebSettings ajustes = webMapa.getSettings();
+            ajustes.setJavaScriptEnabled(true);
+            ajustes.setDomStorageEnabled(true);
+            webMapa.setBackgroundColor(ContextCompat.getColor(this, R.color.primary_container));
+            webMapa.setWebViewClient(new WebViewClient());
+            webMapa.loadDataWithBaseURL("https://www.openstreetmap.org/", htmlMapa(), "text/html", "utf-8", null);
+        }
+
         btnAbrirMaps.setOnClickListener(v -> abrirUbicacionFijaEnMaps());
         btnComoLlegar.setOnClickListener(v -> verificarPermisoYCalcularRuta());
+    }
+
+    /**
+     * HTML del mapa. Leaflet en vez del embed público de openstreetmap.org: el embed
+     * pinta el cartel de colaboración/donaciones encima del mapa y en una tarjeta de
+     * 280 dp se come la mitad útil. Acá la atribución es una línea chica y los
+     * controles van abajo a la derecha, fuera del marcador.
+     */
+    private String htmlMapa() {
+        return "<!doctype html><html><head>"
+                + "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'>"
+                + "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>"
+                + "<style>"
+                + "html,body,#mapa{margin:0;padding:0;height:100%;width:100%;background:#B3DEFF}"
+                + ".leaflet-control-attribution{font-size:9px;line-height:1.2;padding:1px 4px;"
+                + "background:rgba(255,255,255,.8);color:#5F6368}"
+                + ".leaflet-control-attribution a{color:#1565C0}"
+                + ".leaflet-control-zoom a{width:26px;height:26px;line-height:26px;font-size:15px}"
+                + "</style></head><body><div id='mapa'></div>"
+                + "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>"
+                + "<script>"
+                + "var lat=" + LATITUD_EMPRESA + ",lng=" + LONGITUD_EMPRESA + ";"
+                + "var m=L.map('mapa',{zoomControl:false,attributionControl:true});"
+                + "m.attributionControl.setPrefix(false);"
+                + "m.setView([lat,lng],15);"
+                + "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,"
+                + "attribution:'\u00a9 OpenStreetMap contributors'}).addTo(m);"
+                + "L.control.zoom({position:'bottomright'}).addTo(m);"
+                + "L.marker([lat,lng]).addTo(m).bindTooltip('Bodega Central Express',{permanent:false});"
+                + "</script></body></html>";
     }
 
     private void abrirUbicacionFijaEnMaps() {

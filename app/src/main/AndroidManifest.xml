@@ -12,6 +12,8 @@
         backup/restore de las preferencias permitía restaurar un rol de
         Administrador arbitrario sobre el dispositivo, por eso queda deshabilitado.
     -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
