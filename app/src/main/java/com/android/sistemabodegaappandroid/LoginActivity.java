@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.android.sistemabodegaappandroid.db.DatabaseHelper;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.session.SessionManager;
+import com.android.sistemabodegaappandroid.util.DemoSeeder;
 import com.android.sistemabodegaappandroid.util.EdgeToEdgeInsets;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -52,6 +53,10 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Datos de demostración: solo si el inventario está vacío (no pisa datos reales).
+        // Va antes del redirect: si la sesión ya está abierta, igual deben existir.
+        DemoSeeder.sembrarEnSegundoPlano(this);
 
         sessionManager = new SessionManager(this);
         // Si ya hay una sesión activa, redirigir al Panel Principal
