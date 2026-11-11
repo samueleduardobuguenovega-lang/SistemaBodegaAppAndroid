@@ -101,6 +101,62 @@ public class CategoriasActivity extends AppCompatActivity {
         });
 
         fabAgregarCategoria.setOnClickListener(v -> mostrarDialogoRegistro());
+
+        // CU-09: tocar una categoría la abre para corregir nombre o descripción.
+        // Antes la lista era solo de lectura y un error de tipeo quedaba fijo:
+        // el nombre es UNIQUE y los productos la referencian por clave foránea.
+        lvCategorias.setOnItemClickListener((parent, view, position, id) -> {
+            Categoria categoria = adapter.getItem(position);
+            if (categoria != null) {
+                mostrarDialogoEdicion(categoria);
+            }
+        });
+    }
+
+    private void mostrarDialogoEdicion(Categoria categoria) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_add_categoria, null);
+
+        TextInputEditText etNombre = view.findViewById(R.id.etNombreCategoria);
+        TextInputEditText etDesc = view.findViewById(R.id.etDescripcionCategoria);
+        etNombre.setText(categoria.getNombreCategoria());
+        etDesc.setText(categoria.getDescripcion());
+
+        builder.setView(view)
+                .setTitle(R.string.dialog_title_editar_categoria)
+                .setPositiveButton(R.string.save, (dialog, which) -> {
+                    String nombre = etNombre.getText() != null ? etNombre.getText().toString().trim() : "";
+                    String desc = etDesc.getText() != null ? etDesc.getText().toString().trim() : "";
+
+                    if (TextUtils.isEmpty(nombre)) {
+                        Toast.makeText(this, R.string.msg_categoria_nombre_vacio, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (dbHelper.actualizarCategoria(categoria.getIdCategoria(), nombre, desc)) {
+                        Toast.makeText(this, R.string.msg_categoria_actualizada, Toast.LENGTH_SHORT).show();
+                        cargarListaCategorias();
+                    } else {
+                        Toast.makeText(this, R.string.msg_categoria_duplicada, Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNeutralButton(R.string.categoria_desactivar, (dialog, which) -> confirmarDesactivacion(categoria))
+                .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
+
+        builder.create().show();
+    }
+
+    private void confirmarDesactivacion(Categoria categoria) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_title_desactivar_categoria)
+                .setMessage(getString(R.string.msg_desactivar_categoria, categoria.getNombreCategoria()))
+                .setPositiveButton(R.string.categoria_desactivar, (dialog, which) -> {
+                    if (dbHelper.actualizarEstadoCategoria(categoria.getIdCategoria(), 0)) {
+                        Toast.makeText(this, R.string.msg_categoria_desactivada, Toast.LENGTH_SHORT).show();
+                        cargarListaCategorias();
+                    }
+                })
+                .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
+                .show();
     }
 
     /** Vuelve a ejecutar el DAO para reflejar los cambios tras crear una categoría. */

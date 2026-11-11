@@ -920,6 +920,70 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // --- MÓDULO DE CATEGORÍAS (CU-09 - Agregado para registro y validación de unicidad) ---
 
+    /**
+     * Corrige el nombre o la descripción de una categoría existente (CU-09).
+     *
+     * @return true solo si actualizó una fila. Falla si el nombre ya está en uso
+     *         por otra categoría: la columna es UNIQUE y una excepción acá
+     *         cerraría la app, así que se captura y se devuelve false.
+     */
+    public boolean actualizarCategoria(int idCategoria, String nombre, String descripcion) {
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            ContentValues cv = new ContentValues();
+            cv.put(COLUMN_CAT_NOMBRE, nombre);
+            cv.put(COLUMN_CAT_DESCRIPCION, descripcion);
+            return db.update(TABLE_CATEGORIA, cv, COLUMN_CAT_ID + " = ?",
+                    new String[]{String.valueOf(idCategoria)}) == 1;
+        } catch (SQLException e) {
+            Log.w(TAG, "no se pudo actualizar la categoria " + idCategoria, e);
+            return false;
+        }
+    }
+
+    /** Alta y baja lógica de una categoría: los productos que la usan no se tocan. */
+    public boolean actualizarEstadoCategoria(int idCategoria, int activo) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COLUMN_CAT_ACTIVO, activo);
+        return db.update(TABLE_CATEGORIA, cv, COLUMN_CAT_ID + " = ?",
+                new String[]{String.valueOf(idCategoria)}) == 1;
+    }
+
+    /**
+     * Cantidad de administradores ACTIVOS distintos del usuario indicado.
+     * Un administrador es un usuario activo cuyo rol tiene el permiso USUARIOS.
+     */
+    public int contarAdminsActivos(int idExcluido) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String sql = "SELECT COUNT(*) FROM " + TABLE_USUARIO + " u "
+                + "JOIN " + TABLE_ROL + " r ON u." + COLUMN_USUARIO_ID_ROL + " = r." + COLUMN_ROL_ID + " "
+                + "WHERE u." + COLUMN_USUARIO_ACTIVO + " = 1 "
+                + "AND u." + COLUMN_USUARIO_ID + " <> ? "
+                + "AND (',' || UPPER(r." + COLUMN_ROL_PERMISOS + ") || ',') LIKE '%,USUARIOS,%'";
+        try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(idExcluido)})) {
+            return c.moveToFirst() ? c.getInt(0) : 0;
+        }
+    }
+
+    /** true si el usuario está activo y su rol conserva el permiso USUARIOS. */
+    public boolean esAdminActivo(int idUsuario) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String sql = "SELECT COUNT(*) FROM " + TABLE_USUARIO + " u "
+                + "JOIN " + TABLE_ROL + " r ON u." + COLUMN_USUARIO_ID_ROL + " = r." + COLUMN_ROL_ID + " "
+                + "WHERE u." + COLUMN_USUARIO_ID + " = ? AND u." + COLUMN_USUARIO_ACTIVO + " = 1 "
+                + "AND (',' || UPPER(r." + COLUMN_ROL_PERMISOS + ") || ',') LIKE '%,USUARIOS,%'";
+        try (Cursor c = db.rawQuery(sql, new String[]{String.valueOf(idUsuario)})) {
+            return c.moveToFirst() && c.getInt(0) > 0;
+        }
+    }
+
+    /** true si el rol tiene el permiso de administración de usuarios. */
+    public boolean esRolAdmin(int idRol) {
+        String permisos = getPermisosDeRol(idRol);
+        return Permisos.tiene(permisos, Permisos.USUARIOS);
+    }
+
     public boolean isCategoriaExists(String nombreCategoria) {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery("SELECT 1 FROM " + TABLE_CATEGORIA + " WHERE " + COLUMN_CAT_NOMBRE + " = ? COLLATE NOCASE", new String[]{nombreCategoria.trim()});
