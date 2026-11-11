@@ -23,6 +23,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.sistemabodegaappandroid.R;
 import com.android.sistemabodegaappandroid.db.DatabaseHelper;
+import com.android.sistemabodegaappandroid.session.SessionManager;
+import com.android.sistemabodegaappandroid.util.ReglasAdmin;
 import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.model.Usuario;
 import com.android.sistemabodegaappandroid.ui.adapter.UsuarioAdapter;
@@ -148,6 +150,20 @@ public class UsuariosFragment extends Fragment {
             switchActivo.setChecked(usuarioEditar.isActivo());
         }
 
+        // A prueba de errores: la cuenta con la que se está trabajando no se
+        // puede degradar ni desactivar. Es el error que deja el sistema sin
+        // administrador y sin forma de recuperarlo desde la interfaz.
+        SessionManager sesion = new SessionManager(requireContext());
+        boolean esMiCuenta = esEdicion && usuarioEditar.getIdUsuario() == sesion.getUserId();
+        if (esMiCuenta) {
+            spinnerRoles.setEnabled(false);
+            switchActivo.setEnabled(false);
+            android.widget.TextView aviso = dialogView.findViewById(R.id.tvAvisoCuentaPropia);
+            if (aviso != null) {
+                aviso.setVisibility(View.VISIBLE);
+            }
+        }
+
         tilUsername.setError(null);
         etUsername.addTextChangedListener(new TextWatcher() {
             @Override
@@ -217,6 +233,23 @@ public class UsuariosFragment extends Fragment {
             }
 
             if (esEdicion) {
+                boolean objetivoEsUltimoAdmin = dbHelper.esAdminActivo(usuarioEditar.getIdUsuario())
+                        && dbHelper.contarAdminsActivos(usuarioEditar.getIdUsuario()) == 0;
+                boolean nuevoRolEsAdmin = dbHelper.esRolAdmin(selectedRol.getIdRol());
+                if (!ReglasAdmin.puedeCambiarRol(usuarioEditar.getIdUsuario(), sesion.getUserId(),
+                        objetivoEsUltimoAdmin, nuevoRolEsAdmin)) {
+                    Toast.makeText(requireContext(),
+                            objetivoEsUltimoAdmin
+                                    ? R.string.msg_ultimo_admin_protegido
+                                    : R.string.msg_no_puedes_cambiarte_el_rol,
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if (esMiCuenta && !activo) {
+                    Toast.makeText(requireContext(), R.string.msg_no_puedes_eliminarte, Toast.LENGTH_LONG).show();
+                    return;
+                }
+
                 usuarioEditar.setUsername(username);
                 usuarioEditar.setNombreCompleto(nombreCompleto);
                 usuarioEditar.setIdRol(selectedRol.getIdRol());
@@ -247,6 +280,17 @@ public class UsuariosFragment extends Fragment {
     }
 
     private void confirmDeleteUser(Usuario usuario) {
+        SessionManager sesion = new SessionManager(requireContext());
+        boolean esUltimoAdmin = dbHelper.esAdminActivo(usuario.getIdUsuario())
+                && dbHelper.contarAdminsActivos(usuario.getIdUsuario()) == 0;
+        if (!ReglasAdmin.puedeEliminar(usuario.getIdUsuario(), sesion.getUserId(), esUltimoAdmin)) {
+            Toast.makeText(requireContext(),
+                    usuario.getIdUsuario() == sesion.getUserId()
+                            ? R.string.msg_no_puedes_eliminarte
+                            : R.string.msg_ultimo_admin_protegido,
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Eliminar Usuario")
                 .setMessage("¿Estás seguro de que deseas eliminar al usuario @" + usuario.getUsername() + "?")

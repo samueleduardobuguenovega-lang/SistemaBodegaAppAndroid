@@ -258,8 +258,22 @@
     <string name="empresa_direccion">Av. Providencia 1234, Santiago, Chile</string>
     <string name="empresa_contacto">Teléfono: +56 2 2999 8888 · Email: contacto@bodegaexpress.cl</string>
     <string name="empresa_horario">Horario: Lunes a Viernes de 08:30 a 18:30 hrs.</string>
+    <string name="empresa_direccion_corta">Bodega Central Express · Benjamín Vicuña Mackenna 697, Ovalle</string>
+    <string name="desc_mapa_empresa">Mapa con la ubicación del local</string>
     <string name="btn_abrir_google_maps">Abrir en Google Maps</string>
     <string name="btn_como_llegar">Cómo llegar</string>
     <string name="msg_permiso_ubicacion_denegado">Permiso de ubicación no otorgado. Se mantiene visible la ubicación fija de la empresa.</string>
     <string name="msg_maps_no_disponible">No se pudo abrir la aplicación de mapas</string>
+    <string name="dialog_title_editar_categoria">Editar categoría</string>
+    <string name="msg_categoria_actualizada">Categoría actualizada</string>
+    <string name="categoria_desactivar">Desactivar</string>
+    <string name="dialog_title_desactivar_categoria">Desactivar categoría</string>
+    <string name="msg_desactivar_categoria">¿Desactivar «%1$s»? Dejará de aparecer al crear productos, pero los que ya la usan no cambian.</string>
+    <string name="msg_categoria_desactivada">Categoría desactivada</string>
+    <string name="msg_no_puedes_cambiarte_el_rol">No puedes cambiarte el rol a ti mismo: el sistema quedaría sin administrador.</string>
+    <string name="msg_no_puedes_eliminarte">No puedes eliminar tu propia cuenta.</string>
+    <string name="msg_ultimo_admin_protegido">Es el único administrador activo. Asigna el rol a otra persona antes de cambiarlo o eliminarlo.</string>
+    <string name="msg_no_puedes_quitarte_usuarios">No puedes quitarle el permiso de usuarios a tu propio rol sin otro administrador activo.</string>
+    <string name="msg_no_puedes_borrar_tu_rol">No puedes eliminar el rol con el que estás trabajando.</string>
+    <string name="aviso_cuenta_propia">Tu propia cuenta: no puedes cambiar tu rol ni desactivarla.</string>
 </resources>

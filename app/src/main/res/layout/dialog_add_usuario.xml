@@ -82,5 +82,17 @@
             android:checked="true"
             android:text="@string/switch_activo" />
 
+        <TextView
+            android:id="@+id/tvAvisoCuentaPropia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@color/primary_container"
+            android:padding="12dp"
+            android:text="@string/aviso_cuenta_propia"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            android:textColor="@color/text_primary"
+            android:visibility="gone" />
+
     </LinearLayout>
 </ScrollView>

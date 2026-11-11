@@ -18,6 +18,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.sistemabodegaappandroid.R;
 import com.android.sistemabodegaappandroid.db.DatabaseHelper;
+import com.android.sistemabodegaappandroid.session.SessionManager;
+import com.android.sistemabodegaappandroid.util.ReglasAdmin;
 import com.android.sistemabodegaappandroid.model.Rol;
 import com.android.sistemabodegaappandroid.ui.adapter.RolAdapter;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -162,6 +164,19 @@ public class RolesFragment extends Fragment {
                             cbInformes.isChecked());
 
                     if (esEdicion) {
+                        // El rol propio no puede quedarse sin el permiso de
+                        // usuarios: la app seguiría abierta pero el módulo de
+                        // administración dejaría de estar permitido.
+                        SessionManager sesion = new SessionManager(requireContext());
+                        boolean conservaUsuarios = Permisos.tiene(permisosStr, Permisos.USUARIOS);
+                        boolean quedanOtrosAdmins = dbHelper.contarAdminsActivos(sesion.getUserId()) > 0;
+                        if (!ReglasAdmin.puedeQuitarPermisoUsuarios(rolEditar.getIdRol(),
+                                sesion.getRoleId(), conservaUsuarios, quedanOtrosAdmins)) {
+                            Toast.makeText(requireContext(), R.string.msg_no_puedes_quitarte_usuarios,
+                                    Toast.LENGTH_LONG).show();
+                            return;
+                        }
+
                         rolEditar.setNombreRol(nombreRol);
                         rolEditar.setDescripcion(descripcion);
                         rolEditar.setPermisos(permisosStr);
@@ -188,6 +203,12 @@ public class RolesFragment extends Fragment {
     }
 
     private void confirmDeleteRole(Rol rol) {
+        SessionManager sesionRol = new SessionManager(requireContext());
+        if (!ReglasAdmin.puedeEliminarRol(rol.getIdRol(), sesionRol.getRoleId())) {
+            Toast.makeText(requireContext(), R.string.msg_no_puedes_borrar_tu_rol,
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Eliminar Rol")
                 .setMessage("¿Estás seguro de que deseas eliminar el rol \"" + rol.getNombreRol() + "\"?")
